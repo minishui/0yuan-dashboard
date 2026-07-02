@@ -757,34 +757,25 @@ function deriveVirtualFields() {
   var bdOrder = ['徐冲', '杨文丽', '刘家欢', '杨国威', '其他'];
   DATA.filters['商务BD'] = bdOrder.filter(function(b) { return bdSet.has(b); });
 }
-// 等待 detail_records 加载完成后初始化
-function initAfterDataLoaded() {
-  deriveVirtualFields();
-  initTeacherFilter();
-  initRemaining();
-}
-
-// deriveVirtualFields, initTeacherFilter 等改为延迟调用
-deriveVirtualFields = (function() {
-  var _orig = deriveVirtualFields;
-  return function() { /* deferred */ };
-})();
-
-// 原 deriveVirtualFields 和 initTeacherFilter 保留但重命名
-var _deriveVirtualFields = deriveVirtualFields;
-var _initTeacherFilter = function initTeacherFilter() {
-  var teacherSet = new Set();
-  if (DATA.detail_records) {
-    DATA.detail_records.forEach(function(r) {
-      var t = r['辅导姓名'];
-      if (t && t !== '未知' && t !== '老师') teacherSet.add(t);
-    });
-  }
-  DATA.filters['辅导姓名'] = Array.from(teacherSet).sort();
-};
-
-// 等待数据就绪
-_DR_PROMISE.then(function() { _deriveVirtualFields(); _initTeacherFilter(); });
+// detail_records 异步加载完成后执行初始化
+var _origDeriveVirtualFields = deriveVirtualFields;
+_DR_PROMISE.then(function() {
+  _origDeriveVirtualFields();
+  (function initTeacherFilter() {
+    var teacherSet = new Set();
+    if (DATA.detail_records) {
+      DATA.detail_records.forEach(function(r) {
+        var t = r['辅导姓名'];
+        if (t && t !== '未知' && t !== '老师') teacherSet.add(t);
+      });
+    }
+    DATA.filters['辅导姓名'] = Array.from(teacherSet).sort();
+  })();
+  init();
+}).catch(function() {
+  // 即使 data.json 加载失败也初始化（部分功能可能不可用）
+  init();
+});
 
 // ===== 较上期辅助函数 =====
 // 从当前筛选的期次中取最大值，计算上一期的转化率对比
@@ -6930,13 +6921,6 @@ function initTabDrag() {
 window.addEventListener('resize', () => {
   Object.values(chartInstances).forEach(c => { try { c.resize(); } catch(e) {} });
 });
-
-// 等待 detail_records 加载完成后再初始化
-if (_DR_PROMISE) {
-  _DR_PROMISE.then(function() { init(); }).catch(function() { init(); });
-} else {
-  init();
-}
 </script>
 </body>
 </html>
