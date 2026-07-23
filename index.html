@@ -466,6 +466,26 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
       <button class="reset-btn" onclick="resetD3D5Edits()">↺ 恢复默认</button>
       <span class="d3d5-msg" id="d3d5Msg"></span>
     </div>
+
+    <!-- 模块5：多维动态组合分析 -->
+    <div class="section-title" style="margin-top:20px;">模块5：多维动态组合分析</div>
+    <div class="filters-bar" style="padding:8px 16px; position:static; box-shadow:none; border-bottom:none; flex-wrap:wrap; gap:8px; align-items:center;">
+      <div class="filter-group" style="min-width:auto;"><label>横轴维度</label></div>
+      <select id="trendDynamicDim" onchange="renderTrendDynamic()" style="font-size:12px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#475569;">
+        <option value="月份">月份</option>
+        <option value="期次">期次</option>
+        <option value="学科">学科</option>
+        <option value="BD">BD</option>
+      </select>
+      <div class="filter-group" style="min-width:auto;margin-left:16px;"><label>学科筛选</label></div>
+      <select id="trendDynamicSubj" onchange="renderTrendDynamic()" style="font-size:12px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#475569;">
+        <option value="全部">全部</option>
+        <option value="创新思维">创新思维</option>
+        <option value="阅读">阅读</option>
+      </select>
+      <span style="font-size:11px;color:#94a3b8;margin-left:8px;">柱状图=在班人次；折线=30城占比 / 二线及以上占比 / 转率</span>
+    </div>
+    <div class="chart-box tall" id="chartTrendDynamic"></div>
   </div>
   <div class="tab-content" id="tabChannel">
     <div class="section-title">渠道在班人次 &amp; 转化率对比</div>
@@ -555,6 +575,14 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <!-- 各商务BD卡片 -->
     <div class="section-title" style="margin-top:20px;">各商务BD完成情况</div>
     <div class="bd-cards" id="bdCards"></div>
+
+    <!-- 逐月在班与转化概览 -->
+    <div class="section-title" style="margin-top:20px;">逐月在班 & 转化概览</div>
+    <div class="table-wrap" id="tableBdMonthSummary"></div>
+
+    <!-- 分BD数据明细 -->
+    <div class="section-title" style="margin-top:20px;">分BD数据明细</div>
+    <div class="table-wrap" id="tableBdBdDetail"></div>
 
     <!-- 分类型汇总 -->
     <div class="section-title" style="margin-top:20px;">渠道类型汇总</div>
@@ -1859,6 +1887,110 @@ function renderTrendDrill(dimKey) {
   tableHtml += '<tr class="drill-total"><td>合计</td><td>' + fmtInt(totalLeads) + '</td><td>100.0%</td><td>' + fmtPct(safeDiv(totalConv, totalLeads)) + '</td><td>' + fmtPct(safeDiv(totalAttendL1, totalLeads)) + '</td><td>' + fmtPct(safeDiv(totalFinishL1, totalLeads)) + '</td><td>' + fmtPct(safeDiv(totalConv, totalAttendAny)) + '</td></tr>';
   tableHtml += '</tbody></table>';
   document.getElementById('trendDrillTable').innerHTML = tableHtml;
+
+  // 模块5：多维动态组合分析
+  renderTrendDynamic(records);
+}
+
+// 模块5：多维动态组合分析（横轴=月份/期次/学科/BD）
+function renderTrendDynamic(records) {
+  var container = document.getElementById('chartTrendDynamic');
+  if (!container) return;
+  if (!records) records = (window.DATA && window.DATA.detail_records) ? window.DATA.detail_records : [];
+  if (!Array.isArray(records) || records.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:120px 0;color:#94a3b8;font-size:13px;">暂无数据</div>';
+    return;
+  }
+
+  var dim = document.getElementById('trendDynamicDim').value || '月份';
+  var subjFilter = document.getElementById('trendDynamicSubj').value || '全部';
+
+  var filtered = records;
+  if (subjFilter !== '全部') {
+    filtered = filtered.filter(function(r) { return r['学科'] === subjFilter; });
+  }
+
+  var agg = {};
+  filtered.forEach(function(r) {
+    var key;
+    if (dim === 'BD') {
+      key = BD_MAP[r['渠道']] || '其他';
+    } else {
+      key = r[dim];
+    }
+    if (!key) key = '未知';
+    if (!agg[key]) agg[key] = { 在班: 0, 转低: 0, _30城: 0, _2线及以上: 0 };
+    var n = r.在班人次 || 0;
+    agg[key].在班 += n;
+    agg[key].转低 += r.转低人次 || 0;
+    if (CITY_30_SET.has(r['城市'])) agg[key]._30城 += n;
+    var cl = r['城市等级'];
+    if (cl === '一线城市' || cl === '新一线城市' || cl === '二线城市') agg[key]._2线及以上 += n;
+  });
+
+  var keys = Object.keys(agg);
+  if (dim === '期次') {
+    keys.sort(function(a, b) { return PERIOD_ORDER.indexOf(a) - PERIOD_ORDER.indexOf(b); });
+  } else if (dim === '月份') {
+    keys.sort();
+  } else {
+    keys.sort(function(a, b) { return agg[b].在班 - agg[a].在班; });
+  }
+
+  if (keys.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:120px 0;color:#94a3b8;font-size:13px;">当前维度下无数据</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  var barData = keys.map(function(k) { return agg[k].在班; });
+  var line30 = keys.map(function(k) { return safeDiv(agg[k]._30城, agg[k].在班); });
+  var line2 = keys.map(function(k) { return safeDiv(agg[k]._2线及以上, agg[k].在班); });
+  var lineRate = keys.map(function(k) { return safeDiv(agg[k].转低, agg[k].在班); });
+
+  // Delay init to ensure container is fully laid out after tab switch
+  setTimeout(function() {
+    try {
+      var chart = getOrCreateChart('chartTrendDynamic');
+      if (!chart) return;
+      chart.setOption({
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 }, axisPointer: { type: 'cross' } },
+        legend: { data: ['在班人次', '30城占比', '二线及以上占比', '转率'], bottom: 8, textStyle: { fontSize: 12 }, itemWidth: 12, itemHeight: 8 },
+        grid: { left: 75, right: 75, top: 25, bottom: 80, containLabel: false },
+        xAxis: { type: 'category', data: keys, axisLabel: { rotate: dim === '月份' ? 0 : 30, fontSize: 12, fontWeight: 600, color: '#1e293b', interval: 0, margin: 12 }, axisLine: { lineStyle: { color: '#94a3b8' } } },
+        yAxis: [
+          { type: 'value', name: '在班人次', nameTextStyle: { fontSize: 12, fontWeight: 600, color: '#334155' }, nameGap: 50, axisLabel: { formatter: function(v) { return fmtInt(v); }, fontSize: 11 }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } } },
+          { type: 'value', name: '占比 / 转率', nameTextStyle: { fontSize: 12, fontWeight: 600, color: '#334155' }, nameGap: 50, axisLabel: { formatter: function(v) { return (v * 100).toFixed(0) + '%'; }, fontSize: 11 }, splitLine: { show: false } }
+        ],
+        series: [
+          {
+            name: '在班人次', type: 'bar', data: barData,
+            label: { show: true, position: 'top', formatter: function(p) { return fmtInt(p.value); }, color: '#475569', fontSize: 11, fontWeight: 'bold' },
+            itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#6b8cf0' }, { offset: 1, color: '#a5b4fc' }]), borderRadius: [6, 6, 0, 0] },
+            barMaxWidth: 40
+          },
+          {
+            name: '30城占比', type: 'line', yAxisIndex: 1, data: line30,
+            label: { show: true, formatter: function(p) { return fmtPct(p.value); }, color: '#059669', fontSize: 11, fontWeight: 'bold' },
+            symbol: 'circle', symbolSize: 7, lineStyle: { width: 3, color: '#059669', shadowBlur: 8, shadowColor: 'rgba(5,150,105,0.3)' }, itemStyle: { color: '#059669' }
+          },
+          {
+            name: '二线及以上占比', type: 'line', yAxisIndex: 1, data: line2,
+            label: { show: true, formatter: function(p) { return fmtPct(p.value); }, color: '#2563eb', fontSize: 11, fontWeight: 'bold' },
+            symbol: 'diamond', symbolSize: 8, lineStyle: { width: 3, color: '#2563eb', shadowBlur: 8, shadowColor: 'rgba(37,99,235,0.3)' }, itemStyle: { color: '#2563eb' }
+          },
+          {
+            name: '转率', type: 'line', yAxisIndex: 1, data: lineRate,
+            label: { show: true, formatter: function(p) { return fmtPct(p.value); }, color: '#dc2626', fontSize: 11, fontWeight: 'bold' },
+            symbol: 'triangle', symbolSize: 8, lineStyle: { width: 3, color: '#dc2626', type: 'dashed', shadowBlur: 8, shadowColor: 'rgba(220,38,38,0.3)' }, itemStyle: { color: '#dc2626' }
+          }
+        ]
+      }, true);
+    } catch (err) {
+      container.innerHTML = '<div style="text-align:center;padding:120px 0;color:#ef4444;font-size:13px;">图表渲染失败: ' + (err && err.message ? err.message : String(err)) + '</div>';
+    }
+  }, 250);
 }
 
 var D3_D5_DATA = (function() {
@@ -4631,6 +4763,176 @@ function renderBdMonthly(records) {
       '</div>';
   });
   document.getElementById('bdCards').innerHTML = cardsHtml;
+
+  // ===== 2b. 逐月在班 & 转化概览 =====
+  var monthSummaryMap = {};
+  records.forEach(function(r) {
+    var mo = r['月份'] || '未知';
+    if (!monthSummaryMap[mo]) {
+      monthSummaryMap[mo] = {
+        month: mo,
+        在班人次: 0, 转低人次: 0, 转正人次: 0,
+        加微人次: 0, app登录人次: 0,
+        任一讲出勤: 0, 任一讲完课: 0,
+        _30城: 0, _一线: 0, _新一线: 0, _二线: 0, _三线: 0, _四线及以下: 0
+      };
+    }
+    var m = monthSummaryMap[mo];
+    var n = r.在班人次 || 0;
+    m.在班人次 += n;
+    m.转低人次 += r.转低人次 || 0;
+    m.转正人次 += r.转正人次 || 0;
+    m.加微人次 += r.加微人次 || 0;
+    m.app登录人次 += r['app登录人次'] || 0;
+    m.任一讲出勤 += r['任一讲出勤人数'] || 0;
+    m.任一讲完课 += r['任一讲完课人次'] || 0;
+    if (CITY_30_SET.has(r['城市'])) m._30城 += n;
+    var tier = (r['城市等级'] || '').replace('城市', '');
+    if (tier === '一线') m._一线 += n;
+    else if (tier === '新一线') m._新一线 += n;
+    else if (tier === '二线') m._二线 += n;
+    else if (tier === '三线') m._三线 += n;
+    else m._四线及以下 += n;
+  });
+
+  var msList = Object.values(monthSummaryMap);
+  msList.sort(function(a, b) { return a.month < b.month ? -1 : a.month > b.month ? 1 : 0; });
+  var msTotal = msList.reduce(function(acc, m) {
+    acc.在班人次 += m.在班人次; acc.转低人次 += m.转低人次; acc.转正人次 += m.转正人次;
+    acc.加微人次 += m.加微人次; acc.app登录人次 += m.app登录人次;
+    acc.任一讲出勤 += m.任一讲出勤; acc.任一讲完课 += m.任一讲完课;
+    acc._30城 += m._30城; acc._一线 += m._一线; acc._新一线 += m._新一线;
+    acc._二线 += m._二线; acc._三线 += m._三线; acc._四线及以下 += m._四线及以下;
+    return acc;
+  }, {month:'合计', 在班人次:0, 转低人次:0, 转正人次:0, 加微人次:0, app登录人次:0, 任一讲出勤:0, 任一讲完课:0, _30城:0, _一线:0, _新一线:0, _二线:0, _三线:0, _四线及以下:0});
+
+  function msRow(m, isTotal) {
+    var base = m.在班人次;
+    var pct = safeDiv(base, msTotal.在班人次);
+    var p30 = safeDiv(m._30城, base);
+    var p2up = safeDiv(m._一线 + m._新一线 + m._二线, base);
+    var p3up = safeDiv(m._一线 + m._新一线 + m._二线 + m._三线, base);
+    var rate = safeDiv(m.转低人次, base);
+    var attendRate = safeDiv(m.转低人次, m.任一讲出勤);
+    var cls = isTotal ? ' class="total-row"' : '';
+    var moLabel = m.month === '合计' ? '合计' : m.month.replace(/^\d{4}-0?/, '') + '月';
+    return '<tr' + cls + '>' +
+      '<td>' + moLabel + '</td>' +
+      '<td>' + fmtInt(base) + '</td>' +
+      '<td style="' + dataBarBg(base, msTotal.在班人次) + '">' + fmtPct(pct) + '</td>' +
+      '<td>' + fmtPct(p30) + '</td>' +
+      '<td>' + fmtPct(p2up) + '</td>' +
+      '<td>' + fmtPct(p3up) + '</td>' +
+      '<td>' + fmtInt(m.转低人次) + '</td>' +
+      '<td>' + fmtPct(rate) + '</td>' +
+      '<td>' + fmtPct(attendRate) + '</td>' +
+      '</tr>';
+  }
+
+  var msHtml = '<table><thead><tr>' +
+    '<th>月份</th><th>在班人次</th><th>占比</th>' +
+    '<th>30城占比</th><th>二线及以上</th><th>三线及以上</th>' +
+    '<th>转低人次</th><th>转化率</th><th>出勤转率</th>' +
+    '</tr></thead><tbody>';
+  msList.forEach(function(m) { msHtml += msRow(m, false); });
+  msHtml += msRow(msTotal, true);
+  msHtml += '</tbody></table>';
+  document.getElementById('tableBdMonthSummary').innerHTML = msHtml;
+
+  // ===== 2c. 分BD数据明细 =====
+  var bdDetailMap = {};
+  Object.keys(BD_TARGET).forEach(function(bd) {
+    bdDetailMap[bd] = { name: bd, 在班人次:0, 转低人次:0, 转正人次:0, 加微人次:0, app登录人次:0, 任一讲出勤:0, _30城:0, _一线:0, _新一线:0, _二线:0, _三线:0, _四线及以下:0, channels: new Set() };
+  });
+  records.forEach(function(r) {
+    var ch = r.渠道;
+    var bd = BD_MAP[ch];
+    if (bd && bdDetailMap[bd]) {
+      var m = bdDetailMap[bd];
+      var n = r.在班人次 || 0;
+      m.在班人次 += n;
+      m.转低人次 += r.转低人次 || 0;
+      m.转正人次 += r.转正人次 || 0;
+      m.加微人次 += r.加微人次 || 0;
+      m.app登录人次 += r['app登录人次'] || 0;
+      m.任一讲出勤 += r['任一讲出勤人数'] || 0;
+      if (CITY_30_SET.has(r['城市'])) m._30城 += n;
+      var tier = (r['城市等级'] || '').replace('城市', '');
+      if (tier === '一线') m._一线 += n;
+      else if (tier === '新一线') m._新一线 += n;
+      else if (tier === '二线') m._二线 += n;
+      else if (tier === '三线') m._三线 += n;
+      else m._四线及以下 += n;
+      m.channels.add(ch);
+    } else {
+      // Unknown channel → 其他
+      if (!bdDetailMap['其他']) bdDetailMap['其他'] = { name:'其他', 在班人次:0, 转低人次:0, 转正人次:0, 加微人次:0, app登录人次:0, 任一讲出勤:0, _30城:0, _一线:0, _新一线:0, _二线:0, _三线:0, _四线及以下:0, channels: new Set() };
+      var m2 = bdDetailMap['其他'];
+      m2.在班人次 += r.在班人次 || 0;
+      m2.转低人次 += r.转低人次 || 0;
+      m2.转正人次 += r.转正人次 || 0;
+      m2.加微人次 += r.加微人次 || 0;
+      m2.app登录人次 += r['app登录人次'] || 0;
+      m2.任一讲出勤 += r['任一讲出勤人数'] || 0;
+      if (CITY_30_SET.has(r['城市'])) m2._30城 += r.在班人次 || 0;
+      var tier2 = (r['城市等级'] || '').replace('城市', '');
+      if (tier2 === '一线') m2._一线 += r.在班人次 || 0;
+      else if (tier2 === '新一线') m2._新一线 += r.在班人次 || 0;
+      else if (tier2 === '二线') m2._二线 += r.在班人次 || 0;
+      else if (tier2 === '三线') m2._三线 += r.在班人次 || 0;
+      else m2._四线及以下 += r.在班人次 || 0;
+      if (ch) m2.channels.add(ch);
+    }
+  });
+
+  var bdDetailList = Object.values(bdDetailMap).filter(function(b) { return b.在班人次 > 0; });
+  bdDetailList.sort(function(a, b) { return b.在班人次 - a.在班人次; });
+  var bdDetailTotal = bdDetailList.reduce(function(acc, b) {
+    acc.在班人次 += b.在班人次; acc.转低人次 += b.转低人次; acc.转正人次 += b.转正人次;
+    acc.加微人次 += b.加微人次; acc.app登录人次 += b.app登录人次; acc.任一讲出勤 += b.任一讲出勤;
+    acc._30城 += b._30城; acc._一线 += b._一线; acc._新一线 += b._新一线;
+    acc._二线 += b._二线; acc._三线 += b._三线; acc._四线及以下 += b._四线及以下;
+    return acc;
+  }, {name:'合计', 在班人次:0, 转低人次:0, 转正人次:0, 加微人次:0, app登录人次:0, 任一讲出勤:0, _30城:0, _一线:0, _新一线:0, _二线:0, _三线:0, _四线及以下:0});
+
+  function bdRow(b, isTotal) {
+    var base = b.在班人次;
+    var pct = safeDiv(base, bdDetailTotal.在班人次);
+    var p30 = safeDiv(b._30城, base);
+    var p2up = safeDiv(b._一线 + b._新一线 + b._二线, base);
+    var p3up = safeDiv(b._一线 + b._新一线 + b._二线 + b._三线, base);
+    var rate = safeDiv(b.转低人次, base);
+    var attendRate = safeDiv(b.转低人次, b.任一讲出勤);
+    var wechatRate = safeDiv(b.加微人次, base);
+    var appRate = safeDiv(b.app登录人次, base);
+    var cls = isTotal ? ' class="total-row"' : '';
+    var chNames = isTotal ? '-' : Array.from(b.channels).sort().join('、');
+    return '<tr' + cls + '>' +
+      '<td>' + b.name + '</td>' +
+      '<td style="font-size:11px;color:#64748b;">' + chNames + '</td>' +
+      '<td>' + fmtInt(base) + '</td>' +
+      '<td style="' + dataBarBg(base, bdDetailTotal.在班人次) + '">' + fmtPct(pct) + '</td>' +
+      '<td>' + fmtPct(p30) + '</td>' +
+      '<td>' + fmtPct(p2up) + '</td>' +
+      '<td>' + fmtPct(p3up) + '</td>' +
+      '<td>' + fmtInt(b.转低人次) + '</td>' +
+      '<td>' + fmtPct(rate) + '</td>' +
+      '<td>' + fmtPct(attendRate) + '</td>' +
+      '<td>' + fmtPct(wechatRate) + '</td>' +
+      '<td>' + fmtPct(appRate) + '</td>' +
+      '</tr>';
+  }
+
+  var bdDetailHtml = '<table><thead><tr>' +
+    '<th>BD</th><th>负责渠道</th><th>在班人次</th><th>占比</th>' +
+    '<th>30城占比</th><th>二线及以上</th><th>三线及以上</th>' +
+    '<th>转低人次</th><th>转化率</th><th>出勤转率</th>' +
+    '<th>加微率</th><th>APP登录率</th>' +
+    '</tr></thead><tbody>';
+  bdDetailList.forEach(function(b) { bdDetailHtml += bdRow(b, false); });
+  bdDetailHtml += bdRow(bdDetailTotal, true);
+  bdDetailHtml += '</tbody></table>';
+  document.getElementById('tableBdBdDetail').innerHTML = bdDetailHtml;
 
   // ===== 3. Channel type breakdown =====
   const typeData = {};
