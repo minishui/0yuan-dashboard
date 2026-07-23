@@ -1896,7 +1896,8 @@ function renderTrendDrill(dimKey) {
 function renderTrendDynamic(records) {
   var container = document.getElementById('chartTrendDynamic');
   if (!container) return;
-  if (!records) records = (window.DATA && window.DATA.detail_records) ? window.DATA.detail_records : [];
+  // 与整体筛选联动：无入参时取当前筛选后的明细
+  if (!records) records = getFilteredDetail();
   if (!Array.isArray(records) || records.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:120px 0;color:#94a3b8;font-size:13px;">暂无数据</div>';
     return;
