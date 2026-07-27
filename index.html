@@ -834,7 +834,7 @@ function deriveVirtualFields() {
   var bdSet = new Set();
   if (DATA.detail_records) {
     DATA.detail_records.forEach(function(r) {
-      r['渠道类型'] = _CHANNEL_TYPE[r['渠道']] || '其他';
+      r['渠道类型'] = getChannelType(r['渠道'], r['期次']);
       r['商务BD'] = _BD_MAP[r['渠道']] || '其他';
       typeSet.add(r['渠道类型']);
       bdSet.add(r['商务BD']);
@@ -4676,6 +4676,24 @@ const CHANNEL_TYPE = {
   '华南活动': '活动进校', '九州云享': '活动进校',
   '和谐号': '单校直推', '宸陌信息': '单校直推'
 };
+// 渠道类型按"渠道+期次"覆盖（如中碳从夏9期起改为捐赠进校）
+const CHANNEL_TYPE_PERIOD_OVERRIDE = {
+  '中碳': { fromPeriod: '夏9期', type: '捐赠进校' }
+};
+// 获取渠道类型，支持按期次覆盖（period 缺省时用当前聚合期次）
+function getChannelType(channel, period) {
+  if (!period) period = getCurrentAggPeriod();
+  var ov = CHANNEL_TYPE_PERIOD_OVERRIDE[channel];
+  if (ov && period && PERIOD_ORDER.indexOf(period) >= PERIOD_ORDER.indexOf(ov.fromPeriod)) {
+    return ov.type;
+  }
+  return CHANNEL_TYPE[channel] || '其他';
+}
+// 当前聚合期次：单一筛选期次优先，否则取最新期次
+function getCurrentAggPeriod() {
+  if (currentFilters['期次'] && currentFilters['期次'].length === 1) return currentFilters['期次'][0];
+  return getCurrentMaxPeriod();
+}
 const TYPE_ORDER = ['活动进校', '捐赠进校', '单校直推'];
 
 function renderBdMonthly(records) {
@@ -4971,7 +4989,7 @@ function renderBdMonthly(records) {
   // ===== 3. Channel type breakdown =====
   const typeData = {};
   Object.values(chData).forEach(ch => {
-    const t = CHANNEL_TYPE[ch.channel] || '其他';
+    const t = getChannelType(ch.channel, getCurrentAggPeriod());
     if (!typeData[t]) typeData[t] = { type: t, 在班人次: 0, 转低人次: 0 };
     typeData[t].在班人次 += ch.在班人次;
     typeData[t].转低人次 += ch.转低人次;
@@ -5027,7 +5045,7 @@ function renderBdMonthly(records) {
   var curMaxPeriod2 = getCurrentMaxPeriod();
   var extraFiltersCh = getCurrentExtraFilters();
   chList.forEach((ch, idx) => {
-    const ct = CHANNEL_TYPE[ch.channel] || '其他';
+    const ct = getChannelType(ch.channel, getCurrentAggPeriod());
     var curRate = safeDiv(ch.转低人次, ch.在班人次);
     var prevInfo = calcPrevPeriodDiff(curMaxPeriod2, '渠道', ch.channel, extraFiltersCh);
     chHtml += '<tr><td style="color:#1e293b;font-weight:400;font-size:13px;">' + (idx + 1) + '</td><td>' + ch.channel + '</td><td>' + ct + '</td><td>' + fmtInt(ch.在班人次) + '</td><td style="' + dataBarBg(ch.在班人次, totalChLeads) + '">' + fmtPct(safeDiv(ch.在班人次, totalChLeads)) + '</td><td>' + fmtInt(ch.转低人次) + '</td><td>' + fmtPct(curRate) + '</td><td>' + fmtPrevDiff(curRate, prevInfo) + '</td></tr>';
@@ -5279,7 +5297,7 @@ function getCityData(records) {
   const tiers = ['一线','新一线','二线','三线','四线','五线'];
   const tierData = [];
   Object.keys(chTierMap).forEach(ch => {
-    const ct = CHANNEL_TYPE[ch] || '活动进校';
+    const ct = getChannelType(ch, getCurrentAggPeriod());
     tiers.forEach(tier => {
       const d = chTierMap[ch][tier] || { 在班人次: 0, 转低人次: 0 };
       tierData.push({ channel: ch, channelType: ct, tier: tier, 在班人次: d.在班人次, 转低人次: d.转低人次 });
@@ -5916,7 +5934,7 @@ function renderHotspot(records) {
   };
 
   channels.forEach(ch => {
-    const ct = CHANNEL_TYPE[ch] || '活动进校';
+    const ct = getChannelType(ch, getCurrentAggPeriod());
     const chHotspots = hotspots.filter(h => h.channel === ch).sort((a, b) => b.在班人次 - a.在班人次);
     const chLeads = chHotspots.reduce((s, h) => s + h.在班人次, 0);
     const chTransfer = chHotspots.reduce((s, h) => s + h.转低人次, 0);
@@ -6273,7 +6291,7 @@ function renderFlow(records) {
     let html = '<table><thead><tr><th>排名</th><th>渠道</th><th>在班</th><th>占比</th><th>期次目标</th><th>目标达成率</th><th>状态</th><th>缺口</th><th>30城占比</th><th>二线及以上占比</th><th>三线及以上占比</th><th>商务</th></tr></thead><tbody>';
 
     chList.forEach((c, idx) => {
-      const ct = CHANNEL_TYPE[c.channel] || '活动进校';
+      const ct = getChannelType(c.channel, getCurrentAggPeriod());
       const bdName = BD_MAP[c.channel] || '未知';
       var curTargets2 = getCurrentChannelTargets();
       const chTarget = curTargets2[c.channel];
@@ -6632,23 +6650,10 @@ function renderFullFunnel(records) {
 
   var totalLeads = list.reduce(function(s, r) { return s + r.在班人次; }, 0);
 
-  // Helper to look up channel type from original records
-  function getChannelType(name) {
-    var _CHANNEL_TYPE = {
-      '中碳': '活动进校', '昊旗科技': '活动进校', '书妈妈': '活动进校', '兰芷阁': '活动进校',
-      '研吧教育': '活动进校', '兴学教育': '活动进校', '育见锦途': '活动进校',
-      '青松': '捐赠进校', '学海': '捐赠进校', '简单教育': '捐赠进校', '千机教育': '捐赠进校',
-      '中添教育': '捐赠进校', '蓝海': '捐赠进校', '中投基金': '捐赠进校',
-      '华南活动': '活动进校', '九州云享': '活动进校',
-      '和谐号': '单校直推', '宸陌信息': '单校直推'
-    };
-    return _CHANNEL_TYPE[name] || '其他';
-  }
-
   list.forEach(function(row) {
     html += '<tr><td style="font-weight:600;">' + row.key + '</td>';
     if (showTypeCol) {
-      html += '<td style="color:var(--text-secondary);font-size:12px;">' + (row.key === '其他' ? '-' : getChannelType(row.key)) + '</td>';
+      html += '<td style="color:var(--text-secondary);font-size:12px;">' + (row.key === '其他' ? '-' : getChannelType(row.key, getCurrentAggPeriod())) + '</td>';
     }
     COLS.forEach(function(col) {
       if (!col.isRate) {
