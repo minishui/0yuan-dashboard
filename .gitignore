@@ -1,3 +1,5 @@
-.workbuddy/
+.workbuddy/*
+# 例外：创新思维冻结快照是每日合并的必需数据资产，需纳入版本库
+!.workbuddy/frozen_innovation.json
 scripts/
 .DS_Store
