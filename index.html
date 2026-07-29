@@ -1231,11 +1231,11 @@ function renderTrend(records) {
     return PERIOD_ORDER.indexOf(a.key) - PERIOD_ORDER.indexOf(b.key);
   });
 
-  // ===== 转率目标完成率卡片（创新思维 / 阅读，夏6期起阅读目标=5%，其余=2.5%）=====
+  // ===== 转率目标完成率卡片（创新思维 2.5%，阅读统一 3%）=====
   function getTargetRate(period, subj) {
-    // 夏6期及以后，阅读目标 5%；创新思维及更早期次均为 2.5%
-    if (subj === '阅读' && PERIOD_ORDER.indexOf(period) >= PERIOD_ORDER.indexOf('夏6期')) {
-      return 0.05;
+    // 创新思维所有期次 2.5%；阅读所有期次统一 3%
+    if (subj === '阅读') {
+      return 0.03;
     }
     return 0.025;
   }
