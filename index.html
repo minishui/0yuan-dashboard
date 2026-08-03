@@ -5489,6 +5489,13 @@ function getCityData(records) {
   return { tierData, cityData };
 }
 
+// 跨系统期次命名归一化：0元数据为「夏10期」，中台结算底表为「26夏10期」
+// 去掉前缀2位年份（25/26），仅比较「冬/春/夏 + 数字」，使两数据集期次可互匹配
+function normPeriod(p) {
+  if (p === undefined || p === null) return p;
+  return String(p).replace(/^\d{2}/, '');
+}
+
 function renderSettlement() {
   if (!DATA.settlement || !DATA.settlement.records) {
     document.getElementById('kpiRowSettlement').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">⚠️ 结算口径数据未注入，请先运行 scripts/parse_settlement.py + inject_settlement.py</div>';
@@ -5498,11 +5505,13 @@ function renderSettlement() {
   if ((!currentFilters['月份'] || currentFilters['月份'].length === 0) && DATA.settlement.filters && DATA.settlement.filters['月份'] && DATA.settlement.filters['月份'].length) {
     var _maxMonth = DATA.settlement.filters['月份'].slice().sort().pop();
     currentFilters['月份'] = [_maxMonth];
+    try { document.getElementById('txtMonth').textContent = _maxMonth; } catch (e) {}
   }
   var cf = currentFilters || {};
   var records = DATA.settlement.records.filter(function(r) {
     if (cf['月份'] && cf['月份'].indexOf(r.month) === -1) return false;
-    if (cf['期次'] && cf['期次'].indexOf(r.period) === -1) return false;
+    // 期次：跨系统命名差异（夏10期 / 26夏10期），归一化后匹配
+    if (cf['期次'] && cf['期次'].length && !cf['期次'].some(function(v) { return normPeriod(v) === normPeriod(r.period); })) return false;
     if (cf['年级'] && cf['年级'].indexOf(r.grade) === -1) return false;
     if (cf['商务BD'] && cf['商务BD'].indexOf(r.bd) === -1) return false;
     if (cf['城市等级'] && cf['城市等级'].indexOf(r.city_tier) === -1) return false;
