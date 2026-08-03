@@ -5496,6 +5496,17 @@ function normPeriod(p) {
   return String(p).replace(/^\d{2}/, '');
 }
 
+// 跨系统年级命名归一化：0元下拉为「3年级」，中台结算底表为「三年级」
+// 统一归一为数字格式（3年级），使两数据集年级可互匹配
+function normGrade(g) {
+  if (g === undefined || g === null) return g;
+  g = String(g);
+  var map = { '一':'1','二':'2','三':'3','四':'4','五':'5','六':'6','七':'7','八':'8','九':'9' };
+  var m = g.match(/([一二三四五六七八九])年级/);
+  if (m) return map[m[1]] + '年级';
+  return g;
+}
+
 function renderSettlement() {
   if (!DATA.settlement || !DATA.settlement.records) {
     document.getElementById('kpiRowSettlement').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">⚠️ 结算口径数据未注入，请先运行 scripts/parse_settlement.py + inject_settlement.py</div>';
@@ -5519,7 +5530,7 @@ function renderSettlement() {
     if (cf['月份'] && !hasPeriod && cf['月份'].indexOf(r.month) === -1) return false;
     // 期次：跨系统命名差异（夏10期 / 26夏10期），归一化后匹配
     if (cf['期次'] && cf['期次'].length && !cf['期次'].some(function(v) { return normPeriod(v) === normPeriod(r.period); })) return false;
-    if (cf['年级'] && cf['年级'].indexOf(r.grade) === -1) return false;
+    if (cf['年级'] && cf['年级'].length && !cf['年级'].some(function(v) { return normGrade(v) === normGrade(r.grade); })) return false;
     if (cf['商务BD'] && cf['商务BD'].indexOf(r.bd) === -1) return false;
     if (cf['城市等级'] && cf['城市等级'].indexOf(r.city_tier) === -1) return false;
     if (cf['渠道']) {
