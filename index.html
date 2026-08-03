@@ -701,8 +701,8 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <div class="chart-box tall" id="chartCityTier" style="width:100%;min-height:420px;"></div>
     <div class="table-wrap" id="tableCityTier" style="margin-top:12px;"></div>
 
-    <!-- 2. 各渠道：二线及以上 vs 二线及以下（动态生成图表+表） -->
-    <div class="section-title" style="margin-top:24px;">二线及以上 vs 二线及以下（按渠道）</div>
+    <!-- 2. 各渠道：二线及以上 vs 二线以下（动态生成图表+表） -->
+    <div class="section-title" style="margin-top:24px;">二线及以上 vs 二线以下（按渠道）</div>
     <div id="dynamicTier2Charts"></div>
 
     <!-- 3. 各城市占比 & 转率 -->
@@ -1192,7 +1192,7 @@ function isSummaryRow(tr) {
   var first = tr.querySelector('td');
   if (first) {
     var txt = first.textContent.trim();
-    if (['合计','30城','非30城','二线及以上','二线及以下'].indexOf(txt) !== -1) return true;
+    if (['合计','30城','非30城','二线及以上','二线以下'].indexOf(txt) !== -1) return true;
   }
   return false;
 }
@@ -5705,7 +5705,7 @@ function renderCity(records) {
   });
   var tierTotalPrevInfo = calcPrevPeriodDiff(curMaxPeriodTier, null, null, extraFiltersTier);
   tierHtml += '<tr class="total-row"><td>合计</td><td>' + fmtInt(tierSummaryTotal) + '</td><td>100%</td><td>' + fmtInt(tierSummaryTransfer) + '</td><td>' + fmtPct(safeDiv(tierSummaryTransfer, tierSummaryTotal)) + '</td><td>' + fmtPrevDiff(safeDiv(tierSummaryTransfer, tierSummaryTotal), tierTotalPrevInfo) + '</td></tr>';
-  // 二线及以上 / 二线及以下 汇总行（含较上期，复用 _tierPrevAgg）
+  // 二线及以上 / 二线以下 汇总行（含较上期，复用 _tierPrevAgg）
   var t2pTotal = tierData.filter(function(d) { return ['一线','新一线','二线'].includes(d.tier); }).reduce(function(s, d) { return s + d.在班人次; }, 0);
   var t2pTr = tierData.filter(function(d) { return ['一线','新一线','二线'].includes(d.tier); }).reduce(function(s, d) { return s + d.转低人次; }, 0);
   var t2bTotal = tierData.filter(function(d) { return ['三线','四线','五线','其他'].includes(d.tier); }).reduce(function(s, d) { return s + d.在班人次; }, 0);
@@ -5719,11 +5719,11 @@ function renderCity(records) {
   var _t2pPrevInfo = (_t2pPrevLeads > 0) ? { prevRate: safeDiv(_t2pPrevTr, _t2pPrevLeads) } : null;
   var _t2bPrevInfo = (_t2bPrevLeads > 0) ? { prevRate: safeDiv(_t2bPrevTr, _t2bPrevLeads) } : null;
   tierHtml += '<tr style="background:#f0f4ff;"><td><b>二线及以上</b></td><td>' + fmtInt(t2pTotal) + '</td><td style="' + dataBarBg(t2pTotal, tierSummaryTotal) + '">' + fmtPct(safeDiv(t2pTotal, tierSummaryTotal)) + '</td><td>' + fmtInt(t2pTr) + '</td><td>' + fmtPct(_t2pRate) + '</td><td>' + fmtPrevDiff(_t2pRate, _t2pPrevInfo) + '</td></tr>';
-  tierHtml += '<tr style="background:#fff0f0;"><td><b>二线及以下</b></td><td>' + fmtInt(t2bTotal) + '</td><td style="' + dataBarBg(t2bTotal, tierSummaryTotal) + '">' + fmtPct(safeDiv(t2bTotal, tierSummaryTotal)) + '</td><td>' + fmtInt(t2bTr) + '</td><td>' + fmtPct(_t2bRate) + '</td><td>' + fmtPrevDiff(_t2bRate, _t2bPrevInfo) + '</td></tr>';
+  tierHtml += '<tr style="background:#fff0f0;"><td><b>二线以下</b></td><td>' + fmtInt(t2bTotal) + '</td><td style="' + dataBarBg(t2bTotal, tierSummaryTotal) + '">' + fmtPct(safeDiv(t2bTotal, tierSummaryTotal)) + '</td><td>' + fmtInt(t2bTr) + '</td><td>' + fmtPct(_t2bRate) + '</td><td>' + fmtPrevDiff(_t2bRate, _t2bPrevInfo) + '</td></tr>';
   tierHtml += '</tbody></table>';
   document.getElementById('tableCityTier').innerHTML = tierHtml;
 
-  // ===== 2. 每个渠道：二线及以上 vs 二线及以下（动态图+表）=====
+  // ===== 2. 每个渠道：二线及以上 vs 二线以下（动态图+表）=====
   var tier2Html = '';
   channels.forEach(function(ch) {
     var chTotal = chTotalMap[ch] || 0;
@@ -5761,7 +5761,7 @@ function renderCity(records) {
       _prevCh2Info2b = _pbL > 0 ? { prevRate: safeDiv(_pbT, _pbL) } : null;
     }
     tier2Html += '<tr><td>二线及以上</td><td>' + fmtInt(t2p) + '</td><td style="' + dataBarBg(t2p, chTotal) + '">' + fmtPct(t2pRate) + '</td><td>' + fmtInt(t2pTr) + '</td><td style="' + rateBg(t2pConv) + '">' + fmtPct(t2pConv) + '</td><td>' + fmtPrevDiff(t2pConv, _prevCh2Info2p) + '</td></tr>';
-    tier2Html += '<tr><td>二线及以下</td><td>' + fmtInt(t2b) + '</td><td style="' + dataBarBg(t2b, chTotal) + '">' + fmtPct(t2bRate) + '</td><td>' + fmtInt(t2bTr) + '</td><td style="' + rateBg(t2bConv) + '">' + fmtPct(t2bConv) + '</td><td>' + fmtPrevDiff(t2bConv, _prevCh2Info2b) + '</td></tr>';
+    tier2Html += '<tr><td>二线以下</td><td>' + fmtInt(t2b) + '</td><td style="' + dataBarBg(t2b, chTotal) + '">' + fmtPct(t2bRate) + '</td><td>' + fmtInt(t2bTr) + '</td><td style="' + rateBg(t2bConv) + '">' + fmtPct(t2bConv) + '</td><td>' + fmtPrevDiff(t2bConv, _prevCh2Info2b) + '</td></tr>';
     tier2Html += '<tr class="total-row"><td>合计</td><td>' + fmtInt(chTotal) + '</td><td>100%</td><td>' + fmtInt(t2pTr + t2bTr) + '</td><td>' + fmtPct(safeDiv(t2pTr + t2bTr, chTotal)) + '</td><td>' + fmtPrevDiff(safeDiv(t2pTr + t2bTr, chTotal), calcPrevPeriodDiff(getCurrentMaxPeriod(), '渠道', ch, extraFiltersTier)) + '</td></tr>';
     tier2Html += '</tbody></table>';
   });
@@ -5780,7 +5780,7 @@ function renderCity(records) {
       tooltip: { trigger: 'item', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 }, formatter: tooltipItemPctFormatter },
       legend: { top: 0, textStyle: { fontSize: 11, color: '#475569' } },
       grid: { left: 50, right: 20, top: 35, bottom: 30, containLabel: true },
-      xAxis: { type: 'category', data: ['二线及以上','二线及以下'], axisLabel: { fontSize: 11, color: '#475569' } },
+      xAxis: { type: 'category', data: ['二线及以上','二线以下'], axisLabel: { fontSize: 11, color: '#475569' } },
       yAxis: [
         { type: 'value', name: '在班', nameTextStyle: { fontSize: 10 }, axisLabel: { formatter: function(v) { return fmtInt(v); }, fontSize: 10 }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } } },
         { type: 'value', name: '占比', nameTextStyle: { fontSize: 10 }, axisLabel: { formatter: function(v) { return (v*100).toFixed(0)+'%'; }, fontSize: 10 }, splitLine: { show: false }, max: 1 }
@@ -5796,7 +5796,7 @@ function renderCity(records) {
       tooltip: { trigger: 'item', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 }, formatter: tooltipItemPctFormatter },
       legend: { top: 0, textStyle: { fontSize: 11, color: '#475569' } },
       grid: { left: 50, right: 20, top: 35, bottom: 30, containLabel: true },
-      xAxis: { type: 'category', data: ['二线及以上','二线及以下'], axisLabel: { fontSize: 11, color: '#475569' } },
+      xAxis: { type: 'category', data: ['二线及以上','二线以下'], axisLabel: { fontSize: 11, color: '#475569' } },
       yAxis: { type: 'value', name: '转化率', nameTextStyle: { fontSize: 10 }, axisLabel: { formatter: function(v) { return (v*100).toFixed(0)+'%'; }, fontSize: 10 }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } }, max: 1 },
       series: [
         { name: '转化率', type: 'bar', data: [safeDiv(t2pTr, t2p), safeDiv(t2bTr, t2b)], itemStyle: { color: '#f59e0b' }, barMaxWidth: 60, label: { show: true, position: 'top', formatter: function(p) { return fmtPct(p.value); }, fontSize: 11, fontWeight: 600 } }
