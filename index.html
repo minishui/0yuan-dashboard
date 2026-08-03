@@ -5508,8 +5508,15 @@ function renderSettlement() {
     try { document.getElementById('txtMonth').textContent = _maxMonth; } catch (e) {}
   }
   var cf = currentFilters || {};
+  var hasPeriod = !!(cf['期次'] && cf['期次'].length);
+  // 已选期次时放宽月份约束（期次跨月，避免筛非本月期次时数据为空）；同步月份 chip 提示
+  try {
+    var _mEl = document.getElementById('txtMonth');
+    if (hasPeriod) _mEl.textContent = '全部（按期次）';
+    else if (cf['月份'] && cf['月份'].length) _mEl.textContent = cf['月份'][0];
+  } catch (e) {}
   var records = DATA.settlement.records.filter(function(r) {
-    if (cf['月份'] && cf['月份'].indexOf(r.month) === -1) return false;
+    if (cf['月份'] && !hasPeriod && cf['月份'].indexOf(r.month) === -1) return false;
     // 期次：跨系统命名差异（夏10期 / 26夏10期），归一化后匹配
     if (cf['期次'] && cf['期次'].length && !cf['期次'].some(function(v) { return normPeriod(v) === normPeriod(r.period); })) return false;
     if (cf['年级'] && cf['年级'].indexOf(r.grade) === -1) return false;
