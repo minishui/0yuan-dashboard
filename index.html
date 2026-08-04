@@ -767,6 +767,7 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
         <button class="dim-btn" onclick="switchFunnelDim('city',this)">分城市</button>
         <button class="dim-btn" onclick="switchFunnelDim('grade',this)">分年级</button>
         <button class="dim-btn" onclick="switchFunnelDim('gradeTeacher',this)">分年级下辅导</button>
+        <button class="dim-btn" onclick="switchFunnelDim('groupLeader',this)">分组长</button>
       </div>
     </div>
     <div id="readingCompareWrap" style="margin-bottom:16px;">
@@ -1744,6 +1745,7 @@ var TREND_DRILL_DIMS = [
   { key: '学科', label: '学科' },
   { key: '年级', label: '年级' },
   { key: '辅导姓名', label: '辅导' },
+  { key: '学科组名称', label: '组长' },
   { key: '渠道类型', label: '渠道类型' },
   { key: '渠道', label: '渠道' },
   { key: '热点名称', label: '热点' },
@@ -2739,7 +2741,8 @@ var DDAY_DRILL_DIMS = [
   { key: '城市', label: '城市' },
   { key: '热点名称', label: '热点' },
   { key: '年级', label: '年级' },
-  { key: '辅导姓名', label: '辅导' }
+  { key: '辅导姓名', label: '辅导' },
+  { key: '学科组名称', label: '组长' }
 ];
 
 // Load saved order or use default
@@ -3067,6 +3070,7 @@ function renderChannel(records) {
     { key: '城市', label: '城市', getValues: function(recs) { return [...new Set(recs.map(r => r.城市))].filter(Boolean); } },
     { key: '年级', label: '年级', getValues: function(recs) { return ['1年级','2年级','3年级','4年级','5年级','6年级']; } },
     { key: '辅导姓名', label: '辅导', getValues: function(recs) { return [...new Set(recs.map(r => r.辅导姓名))].filter(Boolean).filter(n => n && n !== '未知'); } },
+    { key: '学科组名称', label: '组长', getValues: function(recs) { return ['史春晶','崔国锋','未归属学科组'].filter(g => recs.some(r => (r.学科组名称 || '未归属学科组') === g)); } },
     { key: '热点名称', label: '热点', getValues: function(recs) { return [...new Set(recs.map(r => r.热点名称))].filter(Boolean); } },
     { key: '学科', label: '学科', getValues: function(recs) { return ['创新思维','阅读']; } }
   ];
@@ -6741,7 +6745,7 @@ function switchFunnelDim(dim, btn) {
   if (btn) btn.classList.add('active');
   else {
     // find by text content
-    var dimLabels = { subject: '分学科', channel: '分渠道', channelType: '分渠道类型', hotspot: '分热点', cityline: '分城市线', city: '分城市', grade: '分年级', gradeTeacher: '分年级下辅导' };
+    var dimLabels = { subject: '分学科', channel: '分渠道', channelType: '分渠道类型', hotspot: '分热点', cityline: '分城市线', city: '分城市', grade: '分年级', gradeTeacher: '分年级下辅导', groupLeader: '分组长' };
     document.querySelectorAll('.dim-btn').forEach(function(b) {
       if (b.textContent.trim() === dimLabels[dim]) b.classList.add('active');
     });
@@ -6834,7 +6838,8 @@ function renderFullFunnel(records) {
     cityline: { key: '城市等级', label: '城市线', order: ['一线城市','新一线城市','二线城市','三线城市','四线城市','五线城市','六线及以下','未知','其他'] },
     city: { key: '城市', label: '城市', order: null },
     grade: { key: '年级', label: '年级', order: ['1年级','2年级','3年级','4年级','5年级'] },
-    gradeTeacher: { key: '年级', label: '年级', order: ['1年级','2年级','3年级','4年级','5年级'] }
+    gradeTeacher: { key: '年级', label: '年级', order: ['1年级','2年级','3年级','4年级','5年级'] },
+    groupLeader: { key: '学科组名称', label: '组长', order: ['史春晶','崔国锋','未归属学科组'] }
   };
 
   var dm = dimMap[currentFunnelDim];
@@ -6849,7 +6854,7 @@ function renderFullFunnel(records) {
   // Aggregate by groupKey
   var map = {};
   records.forEach(function(r) {
-    var k = r[groupKey] || '未知';
+    var k = r[groupKey] || (groupKey === '学科组名称' ? '未归属学科组' : '未知');
     if (!map[k]) {
       map[k] = {
         key: k, 在班人次: 0, 加微人次: 0, 加过微人次: 0, app登录人次: 0, 摸底测覆盖人次: 0,
