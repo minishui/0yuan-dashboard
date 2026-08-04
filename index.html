@@ -3205,7 +3205,7 @@ function renderDrilldown(dimKey) {
     return;
   }
 
-  const groupKey = window._drillDims[level];
+  const groupKey = window._drillDims[level].key;
   const dimInfo = window._drillDims.find(d => d.key === groupKey);
   const allGroups = dimInfo ? dimInfo.getValues(filtered) : [];
 
