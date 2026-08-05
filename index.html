@@ -766,6 +766,7 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
         <button class="dim-btn" onclick="switchFunnelDim('grade',this)">分年级</button>
         <button class="dim-btn" onclick="switchFunnelDim('gradeTeacher',this)">分年级下辅导</button>
         <button class="dim-btn" onclick="switchFunnelDim('groupLeader',this)">分组长</button>
+        <button class="dim-btn" onclick="switchFunnelDim('period',this)">分期次</button>
       </div>
     </div>
     <div id="readingCompareWrap" style="margin-bottom:16px;">
@@ -6763,7 +6764,7 @@ function switchFunnelDim(dim, btn) {
   if (btn) btn.classList.add('active');
   else {
     // find by text content
-    var dimLabels = { subject: '分学科', channel: '分渠道', channelType: '分渠道类型', hotspot: '分热点', cityline: '分城市线', city: '分城市', grade: '分年级', gradeTeacher: '分年级下辅导', groupLeader: '分组长' };
+    var dimLabels = { subject: '分学科', channel: '分渠道', channelType: '分渠道类型', hotspot: '分热点', cityline: '分城市线', city: '分城市', grade: '分年级', gradeTeacher: '分年级下辅导', groupLeader: '分组长', period: '分期次' };
     document.querySelectorAll('.dim-btn').forEach(function(b) {
       if (b.textContent.trim() === dimLabels[dim]) b.classList.add('active');
     });
@@ -6845,7 +6846,8 @@ function renderFullFunnel(records) {
     { key: '降幅1_3', label: '1-3讲出勤率降幅', isRate: true, numField: null },
     { key: '任一讲出勤率', label: '任一讲出勤率', isRate: true, numField: '任一讲出勤人数' },
     { key: '转化率', label: '转化率', isRate: true, numField: '转低人次' },
-    { key: '出勤转化率', label: '出勤转化率', isRate: true, numField: null }
+    { key: '出勤转化率', label: '出勤转化率', isRate: true, numField: null },
+    { key: '连续5讲出勤率', label: '连续5讲出勤率', isRate: true, numField: '五讲出勤人数' }
   ];
 
   var dimMap = {
@@ -6857,7 +6859,8 @@ function renderFullFunnel(records) {
     city: { key: '城市', label: '城市', order: null },
     grade: { key: '年级', label: '年级', order: ['1年级','2年级','3年级','4年级','5年级'] },
     gradeTeacher: { key: '年级', label: '年级', order: ['1年级','2年级','3年级','4年级','5年级'] },
-    groupLeader: { key: '学科组名称', label: '组长', order: ['史春晶','崔国锋','未归属学科组'] }
+    groupLeader: { key: '学科组名称', label: '组长', order: ['史春晶','崔国锋','未归属学科组'] },
+    period: { key: '期次', label: '期次', order: PERIOD_ORDER_BASE }
   };
 
   var dm = dimMap[currentFunnelDim];
@@ -6877,7 +6880,7 @@ function renderFullFunnel(records) {
       map[k] = {
         key: k, 在班人次: 0, 加微人次: 0, 加过微人次: 0, app登录人次: 0, 摸底测覆盖人次: 0,
         课前激活人次: 0, 课前破冰人次: 0, 课前深沟人次: 0,
-        一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0,
+        一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0, 五讲出勤人数: 0,
         任一讲出勤人数: 0, 转低人次: 0
       };
     }
@@ -6892,6 +6895,7 @@ function renderFullFunnel(records) {
     m.一讲出勤人数 += r.一讲出勤人数 || 0;
     m.一讲完课人数 += r.一讲完课人数 || 0;
     m.三讲出勤人数 += r.三讲出勤人数 || 0;
+    m.五讲出勤人数 += r.五讲出勤人数 || 0;
     m.任一讲出勤人数 += r.任一讲出勤人数 || 0;
     m.转低人次 += r.转低人次 || 0;
   });
@@ -6912,6 +6916,7 @@ function renderFullFunnel(records) {
     var fa1 = safeDiv(m.一讲出勤人数, base);
     var fa3 = safeDiv(m.三讲出勤人数, base);
     m.降幅1_3 = fa3 - fa1;
+    m.连续5讲出勤率 = safeDiv(m.五讲出勤人数, base);
     m.任一讲出勤率 = safeDiv(m.任一讲出勤人数, base);
     m.转化率 = safeDiv(m.转低人次, base);
     m.出勤转化率 = safeDiv(m.转低人次, m.任一讲出勤人数);
@@ -6926,7 +6931,7 @@ function renderFullFunnel(records) {
   if (shouldMerge) {
     var merged = { key: '其他', 在班人次: 0, 加微人次: 0, 加过微人次: 0, app登录人次: 0, 摸底测覆盖人次: 0,
       课前激活人次: 0, 课前破冰人次: 0, 课前深沟人次: 0,
-      一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0,
+      一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0, 五讲出勤人数: 0,
       任一讲出勤人数: 0, 转低人次: 0, _count: 0 };
     var keep = [];
     list.forEach(function(m) {
@@ -6943,6 +6948,7 @@ function renderFullFunnel(records) {
         merged.一讲出勤人数 += m.一讲出勤人数;
         merged.一讲完课人数 += m.一讲完课人数;
         merged.三讲出勤人数 += m.三讲出勤人数;
+        merged.五讲出勤人数 += m.五讲出勤人数;
         merged.任一讲出勤人数 += m.任一讲出勤人数;
         merged.转低人次 += m.转低人次;
         merged._count++;
@@ -6959,6 +6965,7 @@ function renderFullFunnel(records) {
       merged.首讲出勤率 = safeDiv(merged.一讲出勤人数, base);
       merged.首讲完课率 = safeDiv(merged.一讲完课人数, base);
       merged.降幅1_3 = safeDiv(merged.三讲出勤人数, base) - safeDiv(merged.一讲出勤人数, base);
+      merged.连续5讲出勤率 = safeDiv(merged.五讲出勤人数, base);
       merged.任一讲出勤率 = safeDiv(merged.任一讲出勤人数, base);
       merged.转化率 = safeDiv(merged.转低人次, base);
       merged.出勤转化率 = safeDiv(merged.转低人次, merged.任一讲出勤人数);
@@ -7055,7 +7062,7 @@ function renderFullFunnelGradeTeacher(records, COLS) {
       gradeMap[g][t] = {
         key: t, grade: g, 在班人次: 0, 加微人次: 0, 加过微人次: 0, app登录人次: 0, 摸底测覆盖人次: 0,
         课前激活人次: 0, 课前破冰人次: 0, 课前深沟人次: 0,
-        一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0,
+        一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0, 五讲出勤人数: 0,
         任一讲出勤人数: 0, 转低人次: 0
       };
     }
@@ -7070,6 +7077,7 @@ function renderFullFunnelGradeTeacher(records, COLS) {
     m.一讲出勤人数 += r.一讲出勤人数 || 0;
     m.一讲完课人数 += r.一讲完课人数 || 0;
     m.三讲出勤人数 += r.三讲出勤人数 || 0;
+    m.五讲出勤人数 += r.五讲出勤人数 || 0;
     m.任一讲出勤人数 += r.任一讲出勤人数 || 0;
     m.转低人次 += r.转低人次 || 0;
   });
@@ -7090,6 +7098,7 @@ function renderFullFunnelGradeTeacher(records, COLS) {
       var fa1 = safeDiv(m.一讲出勤人数, base);
       var fa3 = safeDiv(m.三讲出勤人数, base);
       m.降幅1_3 = fa3 - fa1;
+      m.连续5讲出勤率 = safeDiv(m.五讲出勤人数, base);
       m.任一讲出勤率 = safeDiv(m.任一讲出勤人数, base);
       m.转化率 = safeDiv(m.转低人次, base);
       m.出勤转化率 = safeDiv(m.转低人次, m.任一讲出勤人数);
@@ -7107,7 +7116,7 @@ function renderFullFunnelGradeTeacher(records, COLS) {
       var teachers = Object.values(gradeMap[g]);
       var merged = { key: '其他', grade: g, 在班人次: 0, 加微人次: 0, 加过微人次: 0, app登录人次: 0, 摸底测覆盖人次: 0,
         课前激活人次: 0, 课前破冰人次: 0, 课前深沟人次: 0,
-        一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0,
+        一讲出勤人数: 0, 一讲完课人数: 0, 三讲出勤人数: 0, 五讲出勤人数: 0,
         任一讲出勤人数: 0, 转低人次: 0, _count: 0 };
       var keep = {};
       teachers.forEach(function(m) {
@@ -7121,30 +7130,32 @@ function renderFullFunnelGradeTeacher(records, COLS) {
           merged.课前激活人次 += m.课前激活人次;
           merged.课前破冰人次 += m.课前破冰人次;
           merged.课前深沟人次 += m.课前深沟人次;
-          merged.一讲出勤人数 += m.一讲出勤人数;
-          merged.一讲完课人数 += m.一讲完课人数;
-          merged.三讲出勤人数 += m.三讲出勤人数;
-          merged.任一讲出勤人数 += m.任一讲出勤人数;
-          merged.转低人次 += m.转低人次;
-          merged._count++;
-        }
-      });
-      if (merged._count > 0) {
-        var base = merged.在班人次;
-        merged.加微率 = safeDiv(merged.加微人次, base); merged.加微率加过 = safeDiv(merged.加过微人次, base);
-        merged.app登录率 = safeDiv(merged.app登录人次, base);
-        merged.摸底测覆盖率 = safeDiv(merged.摸底测覆盖人次, base);
-        merged.激活率 = safeDiv(merged.课前激活人次, base);
-        merged.破冰率 = safeDiv(merged.课前破冰人次, base);
-        merged.深沟率 = safeDiv(merged.课前深沟人次, base);
-        merged.首讲出勤率 = safeDiv(merged.一讲出勤人数, base);
-        merged.首讲完课率 = safeDiv(merged.一讲完课人数, base);
-        merged.降幅1_3 = safeDiv(merged.三讲出勤人数, base) - safeDiv(merged.一讲出勤人数, base);
-        merged.任一讲出勤率 = safeDiv(merged.任一讲出勤人数, base);
-        merged.转化率 = safeDiv(merged.转低人次, base);
-        merged.出勤转化率 = safeDiv(merged.转低人次, merged.任一讲出勤人数);
-        keep['其他'] = merged;
+merged.一讲出勤人数 += m.一讲出勤人数;
+        merged.一讲完课人数 += m.一讲完课人数;
+        merged.三讲出勤人数 += m.三讲出勤人数;
+        merged.五讲出勤人数 += m.五讲出勤人数;
+        merged.任一讲出勤人数 += m.任一讲出勤人数;
+        merged.转低人次 += m.转低人次;
+        merged._count++;
       }
+    });
+    if (merged._count > 0) {
+      var base = merged.在班人次;
+      merged.加微率 = safeDiv(merged.加微人次, base); merged.加微率加过 = safeDiv(merged.加过微人次, base);
+      merged.app登录率 = safeDiv(merged.app登录人次, base);
+      merged.摸底测覆盖率 = safeDiv(merged.摸底测覆盖人次, base);
+      merged.激活率 = safeDiv(merged.课前激活人次, base);
+      merged.破冰率 = safeDiv(merged.课前破冰人次, base);
+      merged.深沟率 = safeDiv(merged.课前深沟人次, base);
+      merged.首讲出勤率 = safeDiv(merged.一讲出勤人数, base);
+      merged.首讲完课率 = safeDiv(merged.一讲完课人数, base);
+      merged.降幅1_3 = safeDiv(merged.三讲出勤人数, base) - safeDiv(merged.一讲出勤人数, base);
+      merged.连续5讲出勤率 = safeDiv(merged.五讲出勤人数, base);
+      merged.任一讲出勤率 = safeDiv(merged.任一讲出勤人数, base);
+      merged.转化率 = safeDiv(merged.转低人次, base);
+      merged.出勤转化率 = safeDiv(merged.转低人次, merged.任一讲出勤人数);
+      keep['其他'] = merged;
+    }
       gradeMap[g] = keep;
     });
   }
