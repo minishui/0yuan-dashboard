@@ -6994,12 +6994,26 @@ function renderFullFunnel(records) {
   COLS.forEach(function(col) {
     html += '<th>' + col.label + '</th>';
     if (col.showPct) html += '<th>占比</th>';
+    if (col.key === '转化率') html += '<th>转率排名</th>';
   });
   html += '</tr></thead><tbody>';
 
   var totalLeads = list.reduce(function(s, r) { return s + r.在班人次; }, 0);
 
-  list.forEach(function(row) {
+  // 真实转化率排名：当前维度内按转化率降序，并列同排名
+  var funnelRankArr = list.map(function(r) { return { key: r.key, rate: r.转化率 || 0 }; })
+    .sort(function(a, b) { return b.rate - a.rate; });
+  var funnelRankMap = {};
+  funnelRankArr.forEach(function(item, i) {
+    if (i > 0 && item.rate === funnelRankArr[i - 1].rate) {
+      funnelRankMap[item.key] = funnelRankMap[funnelRankArr[i - 1].key];
+    } else {
+      funnelRankMap[item.key] = i + 1;
+    }
+  });
+
+  list.forEach(function(row, idx) {
+    var rank = funnelRankMap[row.key];
     html += '<tr><td style="font-weight:600;">' + row.key + '</td>';
     if (showTypeCol) {
       html += '<td style="color:var(--text-secondary);font-size:12px;">' + (row.key === '其他' ? '-' : getChannelType(row.key, getCurrentAggPeriod())) + '</td>';
@@ -7011,6 +7025,7 @@ function renderFullFunnel(records) {
       } else {
         html += '<td>' + fmtPct(row[col.key]) + '</td>';
       }
+      if (col.key === '转化率') html += '<td>' + rank + '</td>';
     });
     html += '</tr>';
   });
@@ -7045,6 +7060,7 @@ function renderFullFunnel(records) {
     } else {
       html += '<td>' + fmtPct(totalRow[col.key]) + '</td>';
     }
+    if (col.key === '转化率') html += '<td>-</td>';
   });
   html += '</tr></tbody></table>';
 
@@ -7173,11 +7189,23 @@ merged.一讲出勤人数 += m.一讲出勤人数;
     // Grade header
     html += '<div class="section-title" style="margin-top:12px;font-size:14px;">' + g + '（辅导老师 ' + teachers.length + ' 人）</div>';
     html += '<table><thead><tr><th>辅导老师</th>';
-    COLS.forEach(function(col) { html += '<th>' + col.label + '</th>'; if (col.showPct) html += '<th>占比</th>'; });
+    COLS.forEach(function(col) { html += '<th>' + col.label + '</th>'; if (col.showPct) html += '<th>占比</th>'; if (col.key === '转化率') html += '<th>转率排名</th>'; });
     html += '</tr></thead><tbody>';
 
     var gTotalLeads = teachers.reduce(function(s, r) { return s + r.在班人次; }, 0);
-    teachers.forEach(function(row) {
+
+    // 真实转化率排名：当前年级组内按转化率降序，并列同排名
+    var gRankArr = teachers.slice().sort(function(a, b) { return (b.转化率 || 0) - (a.转化率 || 0); });
+    var gRankMap = {};
+    gRankArr.forEach(function(item, i) {
+      if (i > 0 && (item.转化率 || 0) === (gRankArr[i - 1].转化率 || 0)) {
+        gRankMap[item.key] = gRankMap[gRankArr[i - 1].key];
+      } else {
+        gRankMap[item.key] = i + 1;
+      }
+    });
+
+    teachers.forEach(function(row, idx) {
       html += '<tr><td style="font-weight:600;">' + row.key + '</td>';
       COLS.forEach(function(col) {
         if (!col.isRate) {
@@ -7186,6 +7214,7 @@ merged.一讲出勤人数 += m.一讲出勤人数;
         } else {
           html += '<td>' + fmtPct(row[col.key]) + '</td>';
         }
+        if (col.key === '转化率') html += '<td>' + gRankMap[row.key] + '</td>';
       });
       html += '</tr>';
     });
@@ -7211,6 +7240,7 @@ merged.一讲出勤人数 += m.一讲出勤人数;
         var numTotal = teachers.reduce(function(s, r) { return s + (r[nf] || 0); }, 0);
         html += '<td>' + fmtPct(safeDiv(numTotal, gTotalLeads)) + '</td>';
       }
+      if (col.key === '转化率') html += '<td>-</td>';
     });
     html += '</tr></tbody></table>';
   });
