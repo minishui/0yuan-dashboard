@@ -91,6 +91,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"
 .ms-trigger .arrow { font-size: 8px; color: var(--text-muted); transition: transform 0.2s; }
 .ms-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 100; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); min-width: 210px; max-height: 300px; overflow-y: auto; padding: 8px 0; }
 .ms-dropdown.show { display: block; animation: fadeIn 0.15s ease; }
+.ms-dropdown .ms-search { width: calc(100% - 16px); margin: 4px 8px 8px; padding: 6px 10px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; box-sizing: border-box; }
+.ms-dropdown .ms-search:focus { border-color: var(--primary); }
+.ms-dropdown .ms-search::placeholder { color: var(--text-muted); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .ms-dropdown .ms-all { padding: 6px 14px 10px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
 .ms-dropdown .ms-all label { font-size: 12px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; margin: 0; }
@@ -363,6 +366,22 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
       <span class="arrow">▼</span>
     </div>
     <div class="ms-dropdown" id="msGroupDropdown"></div>
+  </div>
+  <div class="filter-group" id="fgCityLine">
+    <label>城市线</label>
+    <div class="ms-trigger" onclick="toggleDropdown('CityLine')">
+      <span class="text" id="txtCityLine">全部</span>
+      <span class="arrow">▼</span>
+    </div>
+    <div class="ms-dropdown" id="msCityLineDropdown"></div>
+  </div>
+  <div class="filter-group" id="fgCity">
+    <label>城市</label>
+    <div class="ms-trigger" onclick="toggleDropdown('City')">
+      <span class="text" id="txtCity">全部</span>
+      <span class="arrow">▼</span>
+    </div>
+    <div class="ms-dropdown" id="msCityDropdown"></div>
   </div>
   <div class="actions">
     <button onclick="applyFilters()">应用筛选</button>
@@ -825,8 +844,8 @@ const CHART_COLORS = {
   }
 })();
 
-var FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称' };
-var FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称' };
+var FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市' };
+var FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市' };
 var PERIOD_ORDER = DATA.period_order;
 
 // ===== Channel type mapping（提前定义，供 deriveVirtualFields 调用） =====
@@ -1073,6 +1092,41 @@ function buildMultiSelect(id) {
     html += '<div class="ms-item"><label><input type="checkbox" value="' + v + '" checked onchange="onItemCheckboxChange(\'' + id + '\')"> ' + v + '</label></div>';
   });
   dd.innerHTML = html;
+  // 顶部插入搜索框（输入关键字实时过滤选项）
+  var _si = document.createElement('input');
+  _si.className = 'ms-search';
+  _si.type = 'text';
+  _si.placeholder = '搜索…';
+  _si.addEventListener('input', function() { onMsSearch(_si, id); });
+  dd.insertBefore(_si, dd.firstChild);
+}
+
+// ===== 下拉内搜索 & 城市筛选派生 =====
+function onMsSearch(input, id) {
+  var q = (input.value || '').trim().toLowerCase();
+  var dd2 = document.getElementById('ms' + id + 'Dropdown');
+  if (!dd2) return;
+  dd2.querySelectorAll('.ms-item').forEach(function(it) {
+    var label = (it.textContent || '').toLowerCase();
+    it.style.display = (!q || label.indexOf(q) !== -1) ? '' : 'none';
+  });
+}
+
+// 运行时从明细记录补全「城市线/城市」筛选选项（内联 DATA 可能缺失这两个键）
+function ensureCityFilters() {
+  if (!DATA || !DATA.detail_records) return;
+  if (!DATA.filters) DATA.filters = {};
+  if (!DATA.filters['城市等级']) {
+    var TIER_ORDER = ['新一线城市','一线城市','二线城市','三线城市','四线城市','五线城市','六线及以下','未知','其他'];
+    var tierSet = {}, citySet = {};
+    DATA.detail_records.forEach(function(r) {
+      if (r['城市等级']) tierSet[r['城市等级']] = 1;
+      if (r['城市']) citySet[r['城市']] = 1;
+    });
+    DATA.filters['城市等级'] = TIER_ORDER.filter(function(t){ return tierSet[t]; })
+      .concat(Object.keys(tierSet).filter(function(t){ return TIER_ORDER.indexOf(t) < 0; }).sort());
+    DATA.filters['城市'] = Object.keys(citySet).sort();
+  }
 }
 
 // ===== FILTER DETAIL RECORDS =====
@@ -4676,7 +4730,7 @@ function switchTab(tab) {
 // ===== APPLY FILTERS =====
 function applyFilters() {
   currentFilters = {};
-  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group'].forEach(id => {
+  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','City'].forEach(id => {
     const vals = getFilterValues(id);
     const all = DATA.filters[FILTER_KEY_MAP[id]] || [];
     if (vals.length > 0 && vals.length < all.length) {
@@ -4690,7 +4744,7 @@ function applyFilters() {
 
 function resetFilters() {
   currentFilters = {};
-  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group'].forEach(id => {
+  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','City'].forEach(id => {
     const dd = document.getElementById('ms' + id + 'Dropdown');
     if (!dd) return;
     const allCb = dd.querySelector('.ms-all input[type="checkbox"]');
@@ -7446,7 +7500,7 @@ function parseExcelFromWorkbook(wb) {
 
   var detailRecords = [];
   var periodSummary = {};
-  var filters = { '期次':{}, '渠道':{}, '年级':{}, '学科':{}, '学期':{}, '月份':{}, '购课日期':{} };
+  var filters = { '期次':{}, '渠道':{}, '年级':{}, '学科':{}, '学期':{}, '月份':{}, '购课日期':{}, '城市等级':{}, '城市':{} };
   var totalLeads = 0, totalTeachers = 0, totalTransfer = 0, totalConvert = 0;
   var rowCount = 0;
 
@@ -7513,6 +7567,8 @@ function parseExcelFromWorkbook(wb) {
     filters['学期'][semester] = 1;
     if (buyDate) filters['购课日期'][buyDate] = 1;
     if (month) filters['月份'][month] = 1;
+    if (cityLevel) filters['城市等级'][cityLevel] = 1;
+    if (city) filters['城市'][city] = 1;
 
     // Period summary
     if (!periodSummary[period]) {
@@ -7620,6 +7676,14 @@ ps['加微率'] = safeDivJs(ps['加微人次'], base); ps['加微率加过'] = s
     }
   }
 
+  // 城市线（城市等级）按等级优先级排序，城市按字母排序
+  if (filters['城市等级']) {
+    var TIER_ORDER_C = ['新一线城市','一线城市','二线城市','三线城市','四线城市','五线城市','六线及以下','未知','其他'];
+    sortedFilters['城市等级'] = TIER_ORDER_C.filter(function(t){ return filters['城市等级'][t]; })
+      .concat(Object.keys(filters['城市等级']).filter(function(t){ return TIER_ORDER_C.indexOf(t) < 0; }).sort());
+  }
+  if (filters['城市']) sortedFilters['城市'] = Object.keys(filters['城市']).sort();
+
   return {
     '总在班人次': totalLeads,
     '总辅导老师数': totalTeachers,
@@ -7649,6 +7713,8 @@ function handleFile(file) {
       PERIOD_ORDER = newData.period_order;
       // 派生虚拟字段（渠道类型 & 商务BD）
       deriveVirtualFields();
+      // 派生城市线/城市筛选选项
+      ensureCityFilters();
       // 重新生成辅导老师筛选选项
       var teacherSet = new Set();
       newData.detail_records.forEach(function(r) {
@@ -7656,8 +7722,8 @@ function handleFile(file) {
         if (t && t !== '未知' && t !== '老师') teacherSet.add(t);
       });
       DATA.filters['辅导姓名'] = Array.from(teacherSet).sort();
-      FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名' };
-      FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名' };
+      FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', CityLine:'城市等级', City:'城市' };
+      FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', CityLine:'城市等级', City:'城市' };
       currentFilters = {};
 
       statusEl.textContent = '导入成功！共 ' + newData['总在班人次'].toLocaleString() + ' 在班人次，' + newData.detail_records.length.toLocaleString() + ' 条明细';
@@ -7732,6 +7798,9 @@ function init() {
   Object.values(chartInstances).forEach(function(c) { try { c.dispose(); } catch(e) {} });
   chartInstances = {};
 
+  // 运行时补全「城市线/城市」筛选选项
+  ensureCityFilters();
+
   // 重新计算时间进度
   TIME_PROGRESS_INFO = calcTimeProgress();
   TIME_PROGRESS = TIME_PROGRESS_INFO.progress;
@@ -7754,7 +7823,7 @@ function init() {
   updateTabSticky();
   window.addEventListener('resize', updateTabSticky);
 
-  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group'].forEach(id => {
+  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','City'].forEach(id => {
     buildMultiSelect(id);
   });
   // Default: select all
