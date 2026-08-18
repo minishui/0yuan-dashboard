@@ -352,6 +352,14 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <div class="ms-dropdown" id="msBDDropdown"></div>
   </div>
   <div class="filter-group">
+    <label>转化链路</label>
+    <div class="ms-trigger" onclick="toggleDropdown('ConvLink')">
+      <span class="text" id="txtConvLink">全部</span>
+      <span class="arrow">▼</span>
+    </div>
+    <div class="ms-dropdown" id="msConvLinkDropdown"></div>
+  </div>
+  <div class="filter-group">
     <label>辅导老师</label>
     <div class="ms-trigger" onclick="toggleDropdown('Teacher')">
       <span class="text" id="txtTeacher">全部</span>
@@ -844,8 +852,8 @@ const CHART_COLORS = {
   }
 })();
 
-var FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市' };
-var FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市' };
+var FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市', ConvLink:'转化链路' };
+var FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市', ConvLink:'转化链路' };
 var PERIOD_ORDER = DATA.period_order;
 
 // ===== Channel type mapping（提前定义，供 deriveVirtualFields 调用） =====
@@ -869,6 +877,14 @@ function getChannelType(channel, period) {
     return ov.type;
   }
   return CHANNEL_TYPE[channel] || '其他';
+}
+
+// 转化链路：夏6期起为 0-299 链路，之前为 0-153 链路
+var CONV_LINK_START_PERIOD = '夏6期';
+function getConvLink(period) {
+  if (!period) return '0-153';
+  if (PERIOD_ORDER.indexOf(period) >= PERIOD_ORDER.indexOf(CONV_LINK_START_PERIOD)) return '0-299';
+  return '0-153';
 }
 
 // ===== 派生虚拟字段：渠道类型 & 商务BD =====
@@ -895,12 +911,15 @@ function deriveVirtualFields() {
   };
   var typeSet = new Set();
   var bdSet = new Set();
+  var linkSet = new Set();
   if (DATA.detail_records) {
     DATA.detail_records.forEach(function(r) {
       r['渠道类型'] = getChannelType(r['渠道'], r['期次']);
       r['商务BD'] = _BD_MAP[r['渠道']] || '其他';
+      r['转化链路'] = getConvLink(r['期次']);
       typeSet.add(r['渠道类型']);
       bdSet.add(r['商务BD']);
+      linkSet.add(r['转化链路']);
     });
   }
   // 生成筛选选项列表（按固定顺序）
@@ -908,6 +927,8 @@ function deriveVirtualFields() {
   DATA.filters['渠道类型'] = typeOrder.filter(function(t) { return typeSet.has(t); });
   var bdOrder = ['徐冲', '杨文丽', '刘家欢', '杨国威', '其他'];
   DATA.filters['商务BD'] = bdOrder.filter(function(b) { return bdSet.has(b); });
+  var linkOrder = ['0-153', '0-299'];
+  DATA.filters['转化链路'] = linkOrder.filter(function(l) { return linkSet.has(l); });
 }
 deriveVirtualFields();
 
@@ -4737,7 +4758,7 @@ function switchTab(tab) {
 // ===== APPLY FILTERS =====
 function applyFilters() {
   currentFilters = {};
-  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','City'].forEach(id => {
+  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','ConvLink','City'].forEach(id => {
     const vals = getFilterValues(id);
     const all = DATA.filters[FILTER_KEY_MAP[id]] || [];
     if (vals.length > 0 && vals.length < all.length) {
@@ -4751,7 +4772,7 @@ function applyFilters() {
 
 function resetFilters() {
   currentFilters = {};
-  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','City'].forEach(id => {
+  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','ConvLink','City'].forEach(id => {
     const dd = document.getElementById('ms' + id + 'Dropdown');
     if (!dd) return;
     const allCb = dd.querySelector('.ms-all input[type="checkbox"]');
@@ -7736,7 +7757,7 @@ function handleFile(file) {
       });
       DATA.filters['辅导姓名'] = Array.from(teacherSet).sort();
       FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', CityLine:'城市等级', City:'城市' };
-      FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', CityLine:'城市等级', City:'城市' };
+      FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', CityLine:'城市等级', City:'城市', ConvLink:'转化链路' };
       currentFilters = {};
 
       statusEl.textContent = '导入成功！共 ' + newData['总在班人次'].toLocaleString() + ' 在班人次，' + newData.detail_records.length.toLocaleString() + ' 条明细';
@@ -7836,7 +7857,7 @@ function init() {
   updateTabSticky();
   window.addEventListener('resize', updateTabSticky);
 
-  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','City'].forEach(id => {
+  ['Period','Semester','Channel','Grade','Subject','Month','BuyDate','ChannelType','BD','Teacher','Group','CityLine','ConvLink','City'].forEach(id => {
     buildMultiSelect(id);
   });
   // Default: select all
