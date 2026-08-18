@@ -1495,7 +1495,7 @@ function renderTrend(records) {
 
   const funnelData = [
     { name: '在班', value: total.在班人次, rate: 1 },
-    { name: '加微', value: total.加微人次, rate: safeDiv(total.加微人次, base) },
+    { name: '加过微', value: total.加过微人次, rate: safeDiv(total.加过微人次, base) },
     { name: 'APP登录', value: total.app登录人次, rate: safeDiv(total.app登录人次, base) },
     { name: '首讲出勤', value: total.首讲出勤人数, rate: safeDiv(total.首讲出勤人数, base) },
     { name: '首讲完课', value: total.首讲完课人数, rate: safeDiv(total.首讲完课人数, base) },
@@ -1521,7 +1521,7 @@ function renderTrend(records) {
   // Module 2b: Loss rate by period — each stage is a line, x-axis = periods
   const chart3 = getOrCreateChart('chartFunnelRate');
   if (chart3) {
-    const stageNames = ['在班→加微', '加微→APP', 'APP→首讲出勤', '首讲出勤→完课', '首讲完课→转化', '任一讲出勤转化率'];
+    const stageNames = ['在班→加过微', '加过微→APP', 'APP→首讲出勤', '首讲出勤→完课', '首讲完课→转化', '任一讲出勤转化率'];
     const stageColors = [CHART_COLORS.primary, CHART_COLORS.success, CHART_COLORS.accent, CHART_COLORS.purple, CHART_COLORS.cyan, '#e11d48'];
 
     // Build data: for each stage, compute loss rate per period
@@ -1529,14 +1529,14 @@ function renderTrend(records) {
       return pNames.map(pn => {
         const pd = periods.find(p => p.key === pn) || {};
         const base = pd.在班人次 || 1;
-        const jw = pd.加微人次 || 0;
+        const jw = pd.加过微人次 || 0;
         const app = pd.app登录人次 || 0;
         const att1 = pd.一讲出勤人数 || 0;
         const comp1 = pd.一讲完课人数 || 0;
         const conv = pd.转低人次 || 0;
         const losses = [
-          safeDiv(base - jw, base),      // 在班→加微
-          safeDiv(jw - app, jw),          // 加微→APP
+          safeDiv(base - jw, base),      // 在班→加过微
+          safeDiv(jw - app, jw),          // 加过微→APP
           safeDiv(app - att1, app),       // APP→首讲出勤
           safeDiv(att1 - comp1, att1),    // 首讲出勤→完课
           safeDiv(comp1 - conv, comp1),   // 首讲完课→转化
