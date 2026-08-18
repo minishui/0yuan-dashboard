@@ -1086,7 +1086,14 @@ function onItemCheckboxChange(id) {
 function buildMultiSelect(id) {
   const dd = document.getElementById('ms' + id + 'Dropdown');
   const filterKey = FILTER_KEY_MAP[id];
-  const values = DATA.filters[filterKey] || [];
+  let values = DATA.filters[filterKey] || [];
+  // 期次 / 月份：最新在上（仅影响下拉显示顺序，不动 DATA.filters，图表不受影响）
+  if (id === 'Period' && typeof PERIOD_ORDER !== 'undefined') {
+    const _rank = {}; PERIOD_ORDER.forEach(function(p, i){ _rank[p] = i; });
+    values = values.slice().sort(function(a, b){ return (_rank[b] != null ? _rank[b] : -1) - (_rank[a] != null ? _rank[a] : -1); });
+  } else if (id === 'Month') {
+    values = values.slice().sort().reverse();
+  }
   let html = '<div class="ms-all"><label><input type="checkbox" checked onchange="onAllCheckboxChange(\'' + id + '\')"> 全选</label><button onclick="selectAll(\'' + id + '\');event.stopPropagation();">全选</button><button onclick="clearAll(\'' + id + '\');event.stopPropagation();">清空</button></div>';
   values.forEach(v => {
     html += '<div class="ms-item"><label><input type="checkbox" value="' + v + '" checked onchange="onItemCheckboxChange(\'' + id + '\')"> ' + v + '</label></div>';
