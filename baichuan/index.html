@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>落地页主链路分析看板</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">析</div>
+      <div class="title">
+        <h1>落地页主链路分析看板</h1>
+        <p>主链路（访问→订单成功）· 以访问 UV 为统一分母</p>
+      </div>
+    </div>
+    <div class="meta" id="meta-line"></div>
+    <div class="topbar-actions">
+      <button id="btn-import" class="btn-import" title="导入新的底表（xlsx / xls / csv），将热替换当前数据">导入数据</button>
+      <input type="file" id="f-import" accept=".xlsx,.xls,.csv" />
+      <span id="import-status" class="import-status"></span>
+    </div>
+  </header>
+
+  <!-- 全局筛选 -->
+  <section class="filters">
+    <div class="f-group">
+      <label>业务线</label>
+      <div class="chips" id="f-bl"></div>
+    </div>
+    <div class="f-group f-pk-group">
+      <label>页面（pagekey）</label>
+      <div class="pk-panel" id="f-pk"></div>
+    </div>
+    <div class="f-group">
+      <label>端</label>
+      <select id="f-end"></select>
+    </div>
+    <div class="f-group">
+      <label>用户类型</label>
+      <select id="f-ut"></select>
+    </div>
+    <div class="f-group">
+      <label>日期</label>
+      <select id="f-date"></select>
+      <input type="date" id="f-ds" />
+      <input type="date" id="f-de" />
+    </div>
+  </section>
+
+  <!-- Tab -->
+  <nav class="tabs">
+    <button class="tab on" data-tab="overview">总览</button>
+    <button class="tab" data-tab="funnel">漏斗分析</button>
+    <button class="tab" data-tab="trend">趋势预警</button>
+    <button class="tab" data-tab="blocking">阻断分析</button>
+    <button class="tab" data-tab="monthly">按月分析</button>
+    <button class="tab" data-tab="notes">口径说明</button>
+  </nav>
+
+  <main>
+    <!-- 总览 -->
+    <section class="panel" id="panel-overview">
+      <div class="kpi-row" id="ov-kpi"></div>
+      <h3>业务线对比（阅读 / 数学）</h3>
+      <div id="ov-bizline"></div>
+      <h3>主链路漏斗（累计）</h3>
+      <div class="chart-row">
+        <div class="chart-box"><div id="ov-funnel-main" class="chart"></div></div>
+      </div>
+      <h3>pagekey 排行（点击表头排序，含总计行）</h3>
+      <div class="table-box" id="ov-table"></div>
+    </section>
+
+    <!-- 漏斗分析 -->
+    <section class="panel" id="panel-funnel" style="display:none">
+      <div class="period-row">
+        <label>统计口径：</label>
+        <select id="fn-period">
+          <option value="all">累计</option>
+          <option value="recent">最近7活跃日</option>
+          <option value="prev">前7活跃日</option>
+        </select>
+      </div>
+      <div class="chart-row">
+        <div class="chart-box"><div id="fn-main" class="chart"></div></div>
+      </div>
+      <div id="fn-table" class="table-box"></div>
+    </section>
+
+    <!-- 趋势预警 -->
+    <section class="panel" id="panel-trend" style="display:none">
+      <div class="chart-row">
+        <div class="chart-box"><div id="tr-main" class="chart"></div></div>
+      </div>
+      <p class="window-note" id="tr-window"></p>
+      <div id="tr-cmp" class="table-box"></div>
+
+      <h3>预警面板</h3>
+      <div id="al-global"></div>
+      <div id="al-list" class="alert-list"></div>
+
+      <h3>版本变化标注</h3>
+      <div id="al-version" class="ver-box"></div>
+    </section>
+
+    <!-- 阻断分析 -->
+    <section class="panel" id="panel-blocking" style="display:none">
+      <div class="kpi-row" id="bk-cards"></div>
+      <p class="window-note" id="bk-note"></p>
+      <h3>各页面阻断事件占访问比例（Top20 按访问UV）</h3>
+      <div class="chart-box"><div id="bk-chart" class="chart"></div></div>
+      <div id="bk-table" class="table-box"></div>
+    </section>
+
+    <!-- 按月分析 -->
+    <section class="panel" id="panel-monthly" style="display:none">
+      <p class="window-note">以自然月聚合（YYYY-MM），随当前筛选（业务线 / 页面 / 端 / 用户类型 / 日期）联动；分母统一为访问 UV。</p>
+      <div class="chart-box"><div id="mn-chart" class="chart"></div></div>
+      <h3>月度明细（含总计行）</h3>
+      <div id="mn-table" class="table-box"></div>
+    </section>
+
+    <!-- 口径说明 -->
+    <section class="panel" id="panel-notes" style="display:none">
+      <h3>事件映射表</h3>
+      <div id="nt-map"></div>
+      <h3>口径与已知局限</h3>
+      <div id="nt-cal"></div>
+    </section>
+  </main>
+
+  <footer class="foot">数据内置（离线可用，双击 index.html 即可打开）· 口径见「口径说明」Tab</footer>
+
+  <script src="js/vendor/echarts.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/vendor/xlsx.full.min.js"></script>
+  <script src="js/import.js"></script>
+  <script>
+    (function () {
+      var m = window.DASHBOARD_DATA && window.DASHBOARD_DATA.meta;
+      if (m) document.getElementById('meta-line').textContent =
+        '数据 ' + m.date_min + ' ~ ' + m.date_max + ' · ' + m.pagekeys.length + ' 个 pagekey · 生成于 ' + m.generated_at;
+    })();
+  </script>
+</body>
+</html>
