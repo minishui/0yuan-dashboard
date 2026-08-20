@@ -99,11 +99,12 @@
       var crumb = document.getElementById('crumb');
       var crumbDesc = document.getElementById('crumbDesc');
 
+      var PATH_MAP = { '0yuan': '0yuan.html', 'baichuan': 'baichuan/index.html' };
       function switchTo(el) {
         items.forEach(function (i) { i.classList.remove('active'); });
         el.classList.add('active');
         var target = el.getAttribute('data-target');
-        frame.src = target + '.html';
+        frame.src = PATH_MAP[target] || (target + '.html');
         crumb.textContent = el.getAttribute('data-title');
         crumbDesc.textContent = el.getAttribute('data-desc');
         try { localStorage.setItem('portal_last', target); } catch (e) {}
