@@ -4977,17 +4977,34 @@ function calcTimeProgress() {
     '夏10期': { start: '2026-07-29', end: '2026-08-06' },
     '夏11期': { start: '2026-08-05', end: '2026-08-13' },
     '夏12期': { start: '2026-08-12', end: '2026-08-20' },
+    '夏13期': { start: '2026-08-19', end: '2026-08-27' },
+    '夏14期': { start: '2026-08-26', end: '2026-09-03' },
+    '夏15期': { start: '2026-09-02', end: '2026-09-10' },
   };
 
   var currentPeriod = null;
   var startDate = null;
-  for (var p in ranges) {
-    var s = new Date(ranges[p].start + 'T00:00:00+08:00');
-    var e = new Date(ranges[p].end + 'T00:00:00+08:00');
-    if (now >= s && now < e) {
-      currentPeriod = p;
-      startDate = s;
-      break;
+
+  // 优先取数据最新期次（PERIOD_ORDER 末项）：只要它在 ranges 内且已开课，就直接展示它，
+  // 不再被旧窗口卡住。这是“周四起直接展示新一期”规则的兜底实现。
+  var lastDataPeriod = PERIOD_ORDER && PERIOD_ORDER.length > 0 ? PERIOD_ORDER[PERIOD_ORDER.length - 1] : null;
+  if (lastDataPeriod && ranges[lastDataPeriod]) {
+    var _ls = new Date(ranges[lastDataPeriod].start + 'T00:00:00+08:00');
+    if (now >= _ls) {
+      currentPeriod = lastDataPeriod;
+      startDate = _ls;
+    }
+  }
+
+  if (!currentPeriod) {
+    for (var p in ranges) {
+      var s = new Date(ranges[p].start + 'T00:00:00+08:00');
+      var e = new Date(ranges[p].end + 'T00:00:00+08:00');
+      if (now >= s && now < e) {
+        currentPeriod = p;
+        startDate = s;
+        break;
+      }
     }
   }
 
