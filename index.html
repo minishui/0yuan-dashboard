@@ -6321,7 +6321,7 @@ function getHotspotData(records) {
     const key = ch + '|' + hs;
     if (!hotspotMap[key]) {
       hotspotMap[key] = {
-        channel: ch, hotspot: hs,
+        channel: ch, hotspot: hs, hotspotId: r.热点ID || '',
         在班人次: 0, app登录人次: 0, 加微人次: 0, 加过微人次: 0,
         任一讲出勤人数: 0, 任一讲完课人次: 0,
         一讲出勤人数: 0, 一讲完课人数: 0,
@@ -6367,7 +6367,7 @@ function renderHotspot(records) {
   channels.sort((a, b) => chOrder[b] - chOrder[a]);
 
   // Build table: per channel, list all hotspots
-  const cols = ['热点名称','主要推广城市','在班人次','加微率','加微率（加过）','APP登录率','摸底测覆盖率','首讲出勤率','首讲完课率','任一讲出勤率','任一讲完课率','任一讲出勤转化率','转化率','状态'];
+  const cols = ['热点ID','热点名称','主要推广城市','在班人次','加微率','加微率（加过）','APP登录率','摸底测覆盖率','首讲出勤率','首讲完课率','任一讲出勤率','任一讲完课率','任一讲出勤转化率','转化率','状态'];
   let html = '';
   let grandLeads = 0, grandApp = 0, grandWechat = 0, grandMdc = 0, grandFirstAtt = 0, grandFirstFin = 0, grandAttend = 0, grandFinish = 0, grandTransfer = 0;
 
@@ -6410,6 +6410,7 @@ function renderHotspot(records) {
       subMdc += h.摸底测覆盖人次; subFirstAtt += h.一讲出勤人数; subFirstFin += h.一讲完课人数;
       subAttend += h.任一讲出勤人数; subFinish += h.任一讲完课人次; subTransfer += h.转低人次;
       html += '<tr style="' + rowStyle + '">';
+      html += '<td style="color:#64748b;font-size:10px;">' + (h.hotspotId || '-') + '</td>';
       html += '<td>' + h.hotspot + '</td>';
       html += '<td style="color:#64748b;font-size:10px;">' + (h.topCities || '-') + '</td>';
       html += '<td>' + fmtInt(h.在班人次) + '</td>';
@@ -6428,7 +6429,7 @@ function renderHotspot(records) {
     });
 
     html += '<tr class="total-row">';
-    html += '<td>小计</td><td>-</td>';
+    html += '<td>-</td><td>小计</td><td>-</td>';
     html += '<td>' + fmtInt(subLeads) + '</td>';
     html += '<td>' + fmtPct(safeDiv(subWechat, subLeads)) + '</td>';
     html += '<td>' + fmtPct(safeDiv(subWechatOver, subLeads)) + '</td>';
@@ -6454,7 +6455,7 @@ function renderHotspot(records) {
   cols.forEach(c => { html += '<th>' + c + '</th>'; });
   html += '</tr></thead><tbody>';
   html += '<tr class="total-row">';
-  html += '<td>合计</td><td>-</td>';
+  html += '<td>-</td><td>合计</td><td>-</td>';
   html += '<td>' + fmtInt(grandLeads) + '</td>';
   html += '<td>' + fmtPct(safeDiv(grandWechat, grandLeads)) + '</td>';
   html += '<td>' + fmtPct(safeDiv(grandApp, grandLeads)) + '</td>';
@@ -7575,6 +7576,7 @@ function parseExcelFromWorkbook(wb) {
     var buyDate = fmtDateJs(row[CIDX['购课日期']]);
     var month = fmtMonthJs(row[CIDX['购课日期']]);
     var hotspot = String(row[CIDX['热点名称']] || '');
+    var hotspotId = String(row[CIDX['热点ID']] || '');
     var teacher = String(row[CIDX['辅导姓名']] || '');
     var cityLevel = String(row[CIDX['城市等级']] || '');
     var city = String(row[CIDX['城市']] || '');
@@ -7687,6 +7689,7 @@ function parseExcelFromWorkbook(wb) {
       '阅读低转正人次':readingConvert,
       '英语低转正人次':englishConvert,
       '月份':month,
+      '热点ID':hotspotId,
       '热点名称':hotspot,
       '城市等级':cityLevel,
       '城市':city,
