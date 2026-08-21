@@ -39,6 +39,26 @@
     .sidebar-foot { margin-top: auto; padding: 14px 22px 0; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; }
     .sidebar-foot a { color: #93c5fd; text-decoration: none; }
 
+    /* ===== 侧边栏折叠 ===== */
+    .sidebar.collapsed { width: 64px; flex-basis: 64px; }
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .brand p,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .sidebar-foot { display: none; }
+    .sidebar.collapsed .brand { padding: 0 0 14px; border: 0; text-align: center; }
+    .sidebar.collapsed .brand .mark { margin: 0 auto; }
+    .sidebar.collapsed .nav-item { justify-content: center; padding: 13px 0; }
+    .sidebar.collapsed .nav-item span.txt { display: none; }
+
+    /* 折叠切换按钮 */
+    .toggle-btn {
+      width: 34px; height: 34px; flex: 0 0 34px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;
+      font-size: 17px; color: #475569; background: #fff; transition: background .15s;
+    }
+    .toggle-btn:hover { background: #f1f5f9; }
+
     /* ===== 主区 ===== */
     .main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
     .topbar {
