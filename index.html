@@ -6,66 +6,82 @@
   <title>进校数据分析门户</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; background: #f1f5f9; color: #0f172a; }
+    html, body { height: 100%; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif; background: #eef2f7; color: #0f172a; }
     #app { display: flex; height: 100vh; overflow: hidden; }
 
     /* ===== 侧边栏 ===== */
     .sidebar {
-      width: 240px; flex: 0 0 240px;
-      background: #0f172a; color: #e2e8f0;
+      width: 248px; flex: 0 0 248px;
+      background: linear-gradient(180deg, #0f172a 0%, #131c30 100%);
+      color: #e2e8f0;
       display: flex; flex-direction: column;
-      padding: 22px 0;
+      padding: 20px 14px;
+      box-shadow: 4px 0 24px rgba(15,23,42,.10);
+      transition: width .22s ease, flex-basis .22s ease;
     }
-    .brand { padding: 0 22px 18px; border-bottom: 1px solid #1e293b; margin-bottom: 14px; }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 6px 8px 18px; border-bottom: 1px solid rgba(148,163,184,.16); margin-bottom: 14px; }
     .brand .mark {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 40px; height: 40px; border-radius: 10px;
-      background: linear-gradient(135deg,#3b82f6,#6366f1); color: #fff;
-      font-size: 20px; font-weight: 700; margin-bottom: 10px;
+      width: 42px; height: 42px; border-radius: 12px; flex: 0 0 42px;
+      background: linear-gradient(135deg,#3b82f6,#8b5cf6); color: #fff;
+      font-size: 19px; font-weight: 800; box-shadow: 0 6px 16px rgba(99,102,241,.35);
     }
-    .brand h1 { font-size: 17px; font-weight: 700; letter-spacing: .5px; }
-    .brand p { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    .brand h1 { font-size: 16px; font-weight: 700; letter-spacing: .3px; line-height: 1.25; }
+    .brand p { font-size: 11px; color: #94a3b8; margin-top: 3px; }
 
-    .nav-label { padding: 10px 22px 6px; font-size: 11px; color: #64748b; letter-spacing: 1px; }
+    .nav-label { padding: 6px 10px 8px; font-size: 11px; color: #64748b; letter-spacing: 1.5px; }
     .nav-item {
       display: flex; align-items: center; gap: 12px;
-      padding: 13px 22px; cursor: pointer; font-size: 14px; font-weight: 600;
-      color: #cbd5e1; border-left: 3px solid transparent; transition: all .15s;
+      padding: 9px 10px; margin-bottom: 4px; cursor: pointer; font-size: 14px; font-weight: 600;
+      color: #cbd5e1; border-radius: 12px; border-left: 3px solid transparent; transition: all .15s;
     }
-    .nav-item .ico { width: 22px; text-align: center; font-size: 16px; }
-    .nav-item:hover { background: #1e293b; color: #fff; }
-    .nav-item.active { background: #1e293b; color: #fff; border-left-color: #3b82f6; }
+    .nav-item .ico {
+      width: 38px; height: 38px; flex: 0 0 38px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; background: rgba(148,163,184,.12); color: #cbd5e1; transition: all .15s;
+    }
+    .nav-item .ico svg { width: 20px; height: 20px; }
+    .nav-item .txt { transition: opacity .15s; }
+    .nav-item:hover { background: rgba(148,163,184,.10); color: #fff; }
+    .nav-item:hover .ico { background: rgba(59,130,246,.20); color: #fff; }
+    .nav-item.active {
+      background: linear-gradient(90deg, rgba(59,130,246,.18), rgba(59,130,246,.02));
+      color: #fff; border-left-color: #3b82f6;
+    }
+    .nav-item.active .ico { background: linear-gradient(135deg,#3b82f6,#6366f1); color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,.4); }
 
-    .sidebar-foot { margin-top: auto; padding: 14px 22px 0; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; }
-    .sidebar-foot a { color: #93c5fd; text-decoration: none; }
+    .sidebar-foot { margin-top: auto; padding: 12px 10px 2px; font-size: 11px; color: #64748b; border-top: 1px solid rgba(148,163,184,.16); line-height: 1.6; }
 
-    /* ===== 侧边栏折叠 ===== */
-    .sidebar.collapsed { width: 64px; flex-basis: 64px; }
+    /* ===== 折叠态 ===== */
+    .sidebar.collapsed { width: 76px; flex-basis: 76px; padding: 20px 10px; }
+    .sidebar.collapsed .brand { flex-direction: column; gap: 0; padding: 4px 0 16px; border-bottom: 1px solid rgba(148,163,184,.16); text-align: center; }
     .sidebar.collapsed .brand h1,
     .sidebar.collapsed .brand p,
     .sidebar.collapsed .nav-label,
     .sidebar.collapsed .sidebar-foot { display: none; }
-    .sidebar.collapsed .brand { padding: 0 0 14px; border: 0; text-align: center; }
-    .sidebar.collapsed .brand .mark { margin: 0 auto; }
-    .sidebar.collapsed .nav-item { justify-content: center; padding: 13px 0; }
-    .sidebar.collapsed .nav-item span.txt { display: none; }
+    .sidebar.collapsed .nav-item { justify-content: center; padding: 8px 0; margin-bottom: 6px; }
+    .sidebar.collapsed .nav-item .txt { display: none; }
+    .sidebar.collapsed .nav-item .ico { width: 44px; height: 44px; flex-basis: 44px; }
 
-    /* 折叠切换按钮 */
+    /* 折叠切换按钮（顶栏左侧，始终可见） */
     .toggle-btn {
-      width: 34px; height: 34px; flex: 0 0 34px;
+      width: 36px; height: 36px; flex: 0 0 36px;
       display: flex; align-items: center; justify-content: center;
-      border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;
-      font-size: 17px; color: #475569; background: #fff; transition: background .15s;
+      border: 1px solid #e2e8f0; border-radius: 10px; cursor: pointer;
+      color: #475569; background: #fff; transition: all .15s;
     }
-    .toggle-btn:hover { background: #f1f5f9; }
+    .toggle-btn:hover { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+    .toggle-btn svg { width: 18px; height: 18px; transition: transform .22s ease; }
+    .toggle-btn.flipped svg { transform: rotate(180deg); }
 
     /* ===== 主区 ===== */
     .main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
     .topbar {
-      height: 52px; flex: 0 0 52px; background: #fff; border-bottom: 1px solid #e2e8f0;
+      height: 56px; flex: 0 0 56px; background: #fff; border-bottom: 1px solid #e2e8f0;
       display: flex; align-items: center; padding: 0 20px; gap: 12px;
+      box-shadow: 0 1px 6px rgba(15,23,42,.04);
     }
-    .topbar .crumb { font-size: 15px; font-weight: 700; }
+    .topbar .crumb { font-size: 16px; font-weight: 700; }
     .topbar .desc { font-size: 12px; color: #64748b; }
     .topbar .right { margin-left: auto; font-size: 12px; color: #94a3b8; }
 
@@ -74,9 +90,10 @@
 
     /* ===== 移动端 ===== */
     @media (max-width: 720px) {
-      .sidebar { width: 64px; flex-basis: 64px; }
-      .brand h1, .brand p, .nav-item span.txt, .nav-label, .sidebar-foot { display: none; }
-      .nav-item { justify-content: center; padding: 14px 0; }
+      .sidebar { width: 76px; flex-basis: 76px; padding: 20px 10px; }
+      .brand { flex-direction: column; gap: 0; padding: 4px 0 16px; text-align: center; }
+      .brand h1, .brand p, .nav-item .txt, .nav-label, .sidebar-foot { display: none; }
+      .nav-item { justify-content: center; padding: 8px 0; }
     }
   </style>
 </head>
@@ -85,39 +102,62 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="mark">析</div>
-        <h1>进校数据分析门户</h1>
-        <p>0元课 · 百川落地页 一体化看板</p>
+        <div>
+          <h1>进校数据分析门户</h1>
+          <p>0元课 · 百川落地页 一体化看板</p>
+        </div>
       </div>
       <div class="nav-label">看板</div>
-      <div class="nav-item active" data-target="0yuan" data-title="0元课前总览" data-desc="全渠道 · 8 Tab · 每日10:10更新">
-        <span class="ico">📊</span><span class="txt">0元课前总览</span>
+      <div class="nav-item active" data-target="0yuan" data-title="0元数据看板" data-desc="全渠道 · 8 Tab · 每日10:10更新">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <rect x="7" y="11" width="3" height="7" rx="1"/>
+            <rect x="12" y="7" width="3" height="11" rx="1"/>
+            <rect x="17" y="13" width="3" height="5" rx="1"/>
+            <path d="M7 9l5-4 5 3"/>
+          </svg>
+        </span>
+        <span class="txt">0元数据看板</span>
       </div>
       <div class="nav-item" data-target="baichuan" data-title="百川落地页分析" data-desc="主链路漏斗 · 阅读/数学">
-        <span class="ico">🔻</span><span class="txt">百川落地页分析</span>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 4h18l-6 7v6l-6 3v-9L3 4z"/>
+          </svg>
+        </span>
+        <span class="txt">百川落地页分析</span>
       </div>
       <div class="sidebar-foot">
-        数据每日自动更新 · 口径见各看板说明
+        数据每日自动更新<br/>口径见各看板说明
       </div>
     </aside>
 
     <section class="main">
       <div class="topbar">
-        <span class="crumb" id="crumb">0元课前总览</span>
+        <span class="toggle-btn" id="toggleBtn" title="折叠/展开侧边栏" role="button" aria-label="折叠侧边栏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 6l-6 6 6 6"/>
+          </svg>
+        </span>
+        <span class="crumb" id="crumb">0元数据看板</span>
         <span class="desc" id="crumbDesc">全渠道 · 8 Tab · 每日10:10更新</span>
         <span class="right" id="updated">—</span>
       </div>
       <div class="frame-wrap">
-        <iframe id="frame" src="0yuan.html" title="0元课前总览"></iframe>
+        <iframe id="frame" src="0yuan.html" title="0元数据看板"></iframe>
       </div>
     </section>
   </div>
 
   <script>
     (function () {
+      var sidebar = document.querySelector('.sidebar');
       var items = document.querySelectorAll('.nav-item');
       var frame = document.getElementById('frame');
       var crumb = document.getElementById('crumb');
       var crumbDesc = document.getElementById('crumbDesc');
+      var toggle = document.getElementById('toggleBtn');
 
       var PATH_MAP = { '0yuan': '0yuan.html', 'baichuan': 'baichuan/index.html' };
       function switchTo(el) {
@@ -133,6 +173,17 @@
       items.forEach(function (el) {
         el.addEventListener('click', function () { switchTo(el); });
       });
+
+      // 折叠
+      function setCollapsed(c) {
+        sidebar.classList.toggle('collapsed', c);
+        toggle.classList.toggle('flipped', c);
+        try { localStorage.setItem('portal_collapsed', c ? '1' : '0'); } catch (e) {}
+      }
+      toggle.addEventListener('click', function () {
+        setCollapsed(!sidebar.classList.contains('collapsed'));
+      });
+      try { if (localStorage.getItem('portal_collapsed') === '1') setCollapsed(true); } catch (e) {}
 
       // 记忆上次选择（同浏览器）
       try {
