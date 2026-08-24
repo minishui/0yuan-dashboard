@@ -145,7 +145,7 @@
         <span class="right" id="updated">—</span>
       </div>
       <div class="frame-wrap">
-        <iframe id="frame" src="0yuan.html" title="0元数据看板"></iframe>
+        <iframe id="frame" src="0yuan.html?t=pageinit" title="0元数据看板"></iframe>
       </div>
     </section>
   </div>
@@ -160,15 +160,26 @@
       var toggle = document.getElementById('toggleBtn');
 
       var PATH_MAP = { '0yuan': '0yuan.html', 'baichuan': 'baichuan/index.html' };
+      // 给子看板 URL 拼时间戳，规避浏览器/CDN 缓存（每次打开拉最新）
+      function withTs(p) { return p + '?t=' + Date.now(); }
       function switchTo(el) {
         items.forEach(function (i) { i.classList.remove('active'); });
         el.classList.add('active');
         var target = el.getAttribute('data-target');
-        frame.src = PATH_MAP[target] || (target + '.html');
+        var path = PATH_MAP[target] || (target + '.html');
+        frame.src = withTs(path);
         crumb.textContent = el.getAttribute('data-title');
         crumbDesc.textContent = el.getAttribute('data-desc');
         try { localStorage.setItem('portal_last', target); } catch (e) {}
       }
+
+      // 预览降级：本地预览面板不会把同目录子看板挂进预览空间，
+      // iframe 会 404 白屏。检测加载失败时整页跳转到子看板本身，避免卡死。
+      frame.addEventListener('error', function () {
+        var cur = frame.getAttribute('src') || '';
+        var clean = cur.split('?')[0];
+        if (clean && clean.indexOf('://') === -1) { window.location.href = clean; }
+      });
 
       items.forEach(function (el) {
         el.addEventListener('click', function () { switchTo(el); });
