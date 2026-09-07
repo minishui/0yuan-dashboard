@@ -7411,7 +7411,7 @@ function renderFullFunnelChart(list, COLS, dimLabel) {
         symbol: 'circle', symbolSize: 4,
         lineStyle: { width: 2 },
         itemStyle: { color: chartColors[i % chartColors.length] },
-        label: { show: false }
+        label: { show: true, formatter: function(p) { return fmtPct(p.value); }, fontSize: 9, color: chartColors[i % chartColors.length] }
       };
     })
   }, { replaceMerge: ['series'] });
