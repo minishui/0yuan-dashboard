@@ -1460,7 +1460,7 @@ function renderTrend(records) {
   const pNames = periods.map(p => p.key);
   chart1.setOption({
     tooltip: { trigger: 'axis', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 }, formatter: tooltipAxisPctFormatter, axisPointer: { type: 'shadow' } },
-    legend: { data: ['在班人次', '人次转化率', '出勤转化率', '转率均线'], bottom: 8, textStyle: { fontSize: 12 }, itemWidth: 12, itemHeight: 8 },
+    legend: { data: ['在班人次', '人次转化率', '出勤转化率', '首讲出勤率', '转率均线'], bottom: 8, textStyle: { fontSize: 12 }, itemWidth: 12, itemHeight: 8 },
     grid: { left: 90, right: 90, top: 25, bottom: 85, containLabel: false },
     xAxis: { type: 'category', data: pNames, axisLabel: { rotate: 30, fontSize: 12, fontWeight: 600, color: '#1e293b', interval: 0, margin: 12 }, axisLine: { lineStyle: { color: '#94a3b8' } } },
     yAxis: [
@@ -1485,6 +1485,12 @@ function renderTrend(records) {
         label: { show: true, formatter: p => fmtPct(p.value), color: '#047857', fontSize: 11, fontWeight: 'bold' },
         itemStyle: { color: '#10b981' }, lineStyle: { width: 3, shadowBlur: 8, shadowColor: 'rgba(16,185,129,0.3)' },
         symbol: 'diamond', symbolSize: 9
+      },
+      {
+        name: '首讲出勤率', type: 'line', yAxisIndex: 1, data: periods.map(p => p.首讲出勤率),
+        label: { show: true, position: 'top', distance: 6, formatter: p => fmtPct(p.value), color: '#6d28d9', fontSize: 10, fontWeight: 'bold' },
+        itemStyle: { color: '#8b5cf6' }, lineStyle: { width: 2.5, type: 'dashed', shadowBlur: 6, shadowColor: 'rgba(139,92,246,0.3)' },
+        symbol: 'triangle', symbolSize: 7
       },
       {
         name: '转率均线', type: 'line', yAxisIndex: 1,
