@@ -1,137 +1,146 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<html lang="zh-CN" data-page-node-id="6YSPPcSxiOb7oexPO47kD9">
+<head data-page-node-id="edFvsAKGhWuMFImiroBTZZ">
+  <meta charset="UTF-8" data-page-node-id="aZnZyh4VC83GAFbftjPv7Z" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="e94jJzMEJB7VoOw0ym0N0W" />
   <title>落地页主链路分析看板</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css" data-page-node-id="gSPO2HECnzjd0fME4F0L8j" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">析</div>
-      <div class="title">
-        <h1>落地页主链路分析看板</h1>
-        <p>主链路（访问→订单成功）· 以访问 UV 为统一分母</p>
+<body data-page-node-id="9sSXrCZYXJiiHafhbogY21">
+  <header class="topbar" data-page-node-id="A9NjasEJiXVdTLquSPi0KN">
+    <div class="brand" data-page-node-id="oU5VwCCEgTjFTAoCHTss09">
+      <div class="brand-mark" data-page-node-id="gt7ew4Joi4Fo1RAkJi7NhQ">析</div>
+      <div class="title" data-page-node-id="gMQqoFcenODFuEZaND43t4">
+        <h1 data-page-node-id="1bLozAzhjnMoDMu755NsiL">落地页主链路分析看板</h1>
+        <p data-page-node-id="vBUt6YC42bh3mSIcjSI7ou">主链路（访问→订单成功）· 以访问 UV 为统一分母</p>
       </div>
     </div>
-    <div class="meta" id="meta-line"></div>
-    <div class="topbar-actions">
-      <button id="btn-import" class="btn-import" title="导入新的底表（xlsx / xls / csv），将热替换当前数据">导入数据</button>
-      <input type="file" id="f-import" accept=".xlsx,.xls,.csv" />
-      <span id="import-status" class="import-status"></span>
+    <div class="meta" id="meta-line" data-page-node-id="lv6fpA1kZBG4otlgINIztr"></div>
+    <div class="topbar-actions" data-page-node-id="f3hEUD61awJY5A0nrMIEnV">
+      <button id="btn-import" class="btn-import" title="导入新的底表（xlsx / xls / csv），将热替换当前数据" data-page-node-id="17ZS02YD5qPG9UfUQ8LLYD">导入数据</button>
+      <input type="file" id="f-import" accept=".xlsx,.xls,.csv" data-page-node-id="tgEfDHlYSidUIaLAhF9v2H" />
+      <span id="import-status" class="import-status" data-page-node-id="kmUSD6N57ixvdbvabua1Um"></span>
     </div>
   </header>
 
   <!-- 全局筛选 -->
-  <section class="filters">
-    <div class="f-group">
-      <label>业务线</label>
-      <div class="chips" id="f-bl"></div>
+  <section class="filters" data-page-node-id="mIzDEIx4dytVo1ATxey1mp">
+    <div class="f-group" data-page-node-id="nJWmCQpvmXxkeGCyrfzoxU">
+      <label data-page-node-id="ooc5jhCNCmo58loDYZhAI5">业务线</label>
+      <div class="chips" id="f-bl" data-page-node-id="UApbpz7qKCb6CcxWZRsyb1"></div>
     </div>
-    <div class="f-group f-pk-group">
-      <label>页面（pagekey）</label>
-      <div class="pk-panel" id="f-pk"></div>
+    <div class="f-group f-pk-group" data-page-node-id="ct8dhJ7FRRHsCRieGWTe0R">
+      <label data-page-node-id="MqM6arFefYvwh6JTLGaM6K">页面（pagekey）</label>
+      <div class="pk-panel" id="f-pk" data-page-node-id="eTeDhkYxUD9b0tJbr6tBNV"></div>
     </div>
-    <div class="f-group">
-      <label>端</label>
-      <select id="f-end"></select>
+    <div class="f-group" data-page-node-id="GUm9pjFNr5wccNeIYAUT2y">
+      <label data-page-node-id="NAIRtp8eaBUsvy2jtZtoAM">端</label>
+      <select id="f-end" data-page-node-id="Ih2EriE3EzxF2fZogmVApI"></select>
     </div>
-    <div class="f-group">
-      <label>用户类型</label>
-      <select id="f-ut"></select>
+    <div class="f-group" data-page-node-id="nU9EK7Nh0tszi7EmZa2HRI">
+      <label data-page-node-id="0iEEQH6YrsywvuOcE7AHWg">用户类型</label>
+      <select id="f-ut" data-page-node-id="E2AtE5iBWTRwweB6NwaShP"></select>
     </div>
-    <div class="f-group">
-      <label>日期</label>
-      <select id="f-date"></select>
-      <input type="date" id="f-ds" />
-      <input type="date" id="f-de" />
+    <div class="f-group" data-page-node-id="G0yotp0x1v61FgCOovbclF">
+      <label data-page-node-id="qGvPIzXLvmZqLpxvXVdGdN">日期</label>
+      <select id="f-date" data-page-node-id="162jhZlV2iTvgCj5RqKXfk"></select>
+      <input type="date" id="f-ds" data-page-node-id="NEyYH4JFOIR6rBzmCN1TSS" />
+      <input type="date" id="f-de" data-page-node-id="8l74cJTCXHvbXTOoEYqolX" />
     </div>
   </section>
 
   <!-- Tab -->
-  <nav class="tabs">
-    <button class="tab on" data-tab="overview">总览</button>
-    <button class="tab" data-tab="funnel">漏斗分析</button>
-    <button class="tab" data-tab="trend">趋势预警</button>
-    <button class="tab" data-tab="blocking">阻断分析</button>
-    <button class="tab" data-tab="monthly">按月分析</button>
-    <button class="tab" data-tab="notes">口径说明</button>
+  <nav class="tabs" data-page-node-id="Og8kr4kVqeg1DBVLoDkKfu">
+    <button class="tab on" data-tab="overview" data-page-node-id="8gwmAqlPAG6vlE8zLZ8giB">总览</button>
+    <button class="tab" data-tab="funnel" data-page-node-id="c9obmsauyOMrtjXSQEr1Ml">漏斗分析</button>
+    <button class="tab" data-tab="trend" data-page-node-id="Q7qlPxbpd59QSmuD0QxDEt">趋势预警</button>
+    <button class="tab" data-tab="blocking" data-page-node-id="04I3pl4wEpRTq1HgHpelap">阻断分析</button>
+    <button class="tab" data-tab="monthly" data-page-node-id="S1nNFcL8q4u3GOreXAzFzk">按月分析</button>
+    <button class="tab" data-tab="weekly" data-page-node-id="wkT9bX7qP2vN3mR8sL1cD4">按周分析</button>
+    <button class="tab" data-tab="notes" data-page-node-id="FPWaMCAUHEF2iDoQfkyAjU">口径说明</button>
   </nav>
 
-  <main>
+  <main data-page-node-id="pv8NktLnyRSg8VoYelCS0v">
     <!-- 总览 -->
-    <section class="panel" id="panel-overview">
-      <div class="kpi-row" id="ov-kpi"></div>
-      <h3>业务线对比（阅读 / 数学）</h3>
-      <div id="ov-bizline"></div>
-      <h3>主链路漏斗（累计）</h3>
-      <div class="chart-row">
-        <div class="chart-box"><div id="ov-funnel-main" class="chart"></div></div>
+    <section class="panel" id="panel-overview" data-page-node-id="6ScsPTMiGFZ0qeltiy35CS">
+      <div class="kpi-row" id="ov-kpi" data-page-node-id="NpUe2hcFA255j9mSmNGckB"></div>
+      <h3 data-page-node-id="NyNlBM3KkJERMCaJ9sw8rh">业务线对比（阅读 / 数学）</h3>
+      <div id="ov-bizline" data-page-node-id="6pEqju8fAVNHqbiOENgLwj"></div>
+      <h3 data-page-node-id="wazawIOechRQ6bpL23ul3q">主链路漏斗（累计）</h3>
+      <div class="chart-row" data-page-node-id="rrGCZHBX4pgkCxJxwRmd5e">
+        <div class="chart-box" data-page-node-id="J8KVmYsX1DsTMFWqAGZens"><div id="ov-funnel-main" class="chart" data-page-node-id="pAIFs1CYGcp6mBLCeuMKk5"></div></div>
       </div>
-      <h3>pagekey 排行（点击表头排序，含总计行）</h3>
-      <div class="table-box" id="ov-table"></div>
+      <h3 data-page-node-id="TbyctTsP8h7GCrAEkDAx1F">pagekey 排行（点击表头排序，含总计行）</h3>
+      <div class="table-box" id="ov-table" data-page-node-id="hjGCCtTShChKGeLxHbgAG5"></div>
     </section>
 
     <!-- 漏斗分析 -->
-    <section class="panel" id="panel-funnel" style="display:none">
-      <div class="period-row">
-        <label>统计口径：</label>
-        <select id="fn-period">
-          <option value="all">累计</option>
-          <option value="recent">最近7活跃日</option>
-          <option value="prev">前7活跃日</option>
+    <section class="panel" id="panel-funnel" style="display:none" data-page-node-id="D54HNgOWu9xUMAafvKxSIg">
+      <div class="period-row" data-page-node-id="Tx5speTkbOgbdncWFIZM78">
+        <label data-page-node-id="dH3dyh2E9Bchm04zicr0Dd">统计口径：</label>
+        <select id="fn-period" data-page-node-id="FHuUVTv51nkl6FipJxX2kn">
+          <option value="all" data-page-node-id="zgbVmghv5EvCSx2sdGZ1i5">累计</option>
+          <option value="recent" data-page-node-id="K1JOxg741ylnJoxDIacfsM">最近7活跃日</option>
+          <option value="prev" data-page-node-id="O7dNAwzXUXmjV33d7eterK">前7活跃日</option>
         </select>
       </div>
-      <div class="chart-row">
-        <div class="chart-box"><div id="fn-main" class="chart"></div></div>
+      <div class="chart-row" data-page-node-id="7C9d77YuA5TuPiKjY4M18S">
+        <div class="chart-box" data-page-node-id="XVivx2XsRILzEngdxkGJzi"><div id="fn-main" class="chart" data-page-node-id="Pjv3EOhmhxDyq78PqDfyrk"></div></div>
       </div>
-      <div id="fn-table" class="table-box"></div>
+      <div id="fn-table" class="table-box" data-page-node-id="YIk8rG9nC9fFmDHBmGn6u8"></div>
     </section>
 
     <!-- 趋势预警 -->
-    <section class="panel" id="panel-trend" style="display:none">
-      <div class="chart-row">
-        <div class="chart-box"><div id="tr-main" class="chart"></div></div>
+    <section class="panel" id="panel-trend" style="display:none" data-page-node-id="UxlGkhJ8gPQopKAmBXY72h">
+      <div class="chart-row" data-page-node-id="WxPbpq8tkiuv059J3KcLxd">
+        <div class="chart-box" data-page-node-id="m9IzJZfEoebHrmEze4SJ4K"><div id="tr-main" class="chart" data-page-node-id="WA9EzSLBlnIQoXHXSCCxXQ"></div></div>
       </div>
-      <p class="window-note" id="tr-window"></p>
-      <div id="tr-cmp" class="table-box"></div>
+      <p class="window-note" id="tr-window" data-page-node-id="0Vmz2fxU3DlRWKGul67kg5"></p>
+      <div id="tr-cmp" class="table-box" data-page-node-id="E6jpcGf1E2Ukz75L0L5sUX"></div>
 
-      <h3>预警面板</h3>
-      <div id="al-global"></div>
-      <div id="al-list" class="alert-list"></div>
+      <h3 data-page-node-id="tgh8RLHy7yP6FrVW5rpYzy">预警面板</h3>
+      <div id="al-global" data-page-node-id="f8jBoN1IJXAkqDBCJhucWX"></div>
+      <div id="al-list" class="alert-list" data-page-node-id="IfZfNVJmLPKf9jucNW6AsO"></div>
 
-      <h3>版本变化标注</h3>
-      <div id="al-version" class="ver-box"></div>
+      <h3 data-page-node-id="uBdDksDoxrtdBRQZ046bpv">版本变化标注</h3>
+      <div id="al-version" class="ver-box" data-page-node-id="enOrnWBz2MXkafJMbjHAHs"></div>
     </section>
 
     <!-- 阻断分析 -->
-    <section class="panel" id="panel-blocking" style="display:none">
-      <div class="kpi-row" id="bk-cards"></div>
-      <p class="window-note" id="bk-note"></p>
-      <h3>各页面阻断事件占访问比例（Top20 按访问UV）</h3>
-      <div class="chart-box"><div id="bk-chart" class="chart"></div></div>
-      <div id="bk-table" class="table-box"></div>
+    <section class="panel" id="panel-blocking" style="display:none" data-page-node-id="DMWhUofzsZHbJWYHQhiEAD">
+      <div class="kpi-row" id="bk-cards" data-page-node-id="0PLQqsD5qMHFBLoJxLiIJe"></div>
+      <p class="window-note" id="bk-note" data-page-node-id="oNPXceAttNuAhLtvnCeIlz"></p>
+      <h3 data-page-node-id="JoUKmvRZkQFzywTb8H8qEe">各页面阻断事件占访问比例（Top20 按访问UV）</h3>
+      <div class="chart-box" data-page-node-id="yywKlhQZ64vGuZ3s9wTxrU"><div id="bk-chart" class="chart" data-page-node-id="AmsnLKVOmn15EaVrGYoiaw"></div></div>
+      <div id="bk-table" class="table-box" data-page-node-id="qlmN8XspsulY7J5rLmztge"></div>
     </section>
 
     <!-- 按月分析 -->
-    <section class="panel" id="panel-monthly" style="display:none">
-      <p class="window-note">以自然月聚合（YYYY-MM），随当前筛选（业务线 / 页面 / 端 / 用户类型 / 日期）联动；分母统一为访问 UV。</p>
-      <div class="chart-box"><div id="mn-chart" class="chart"></div></div>
-      <h3>月度明细（含总计行）</h3>
-      <div id="mn-table" class="table-box"></div>
+    <section class="panel" id="panel-monthly" style="display:none" data-page-node-id="URl1iKSZwHLgKLYvjhlG5q">
+      <p class="window-note" data-page-node-id="bUfkxrWptB5MSjFstKzxyh">以自然月聚合（YYYY-MM），随当前筛选（业务线 / 页面 / 端 / 用户类型 / 日期）联动；分母统一为访问 UV。</p>
+      <div class="chart-box" data-page-node-id="ccBP2aWyia7ERxubRe6vBf"><div id="mn-chart" class="chart" data-page-node-id="yinGF0v5gdmier23T3mqOi"></div></div>
+      <h3 data-page-node-id="5bazg7LmeeWQlunyOG8JNU">月度明细（含总计行）</h3>
+      <div id="mn-table" class="table-box" data-page-node-id="ynU0E4MV2txWDlzAFqLDD4"></div>
+    </section>
+
+    <!-- 按周分析 -->
+    <section class="panel" id="panel-weekly" style="display:none" data-page-node-id="wkP1aB2cD3eF4gH5iJ6kL7">
+      <p class="window-note" data-page-node-id="wkX8yZ9aB0cD1eF2gH3iJ4">周期口径：<b>周三~周二</b>为一周（与百川周报对齐），周标签形如「09/02~09/08」表示该周周三到周二；随当前筛选（业务线 / 页面 / 端 / 用户类型 / 日期）联动，分母统一为访问 UV。</p>
+      <div class="chart-box" data-page-node-id="wkC5dE6fG7hI8jK9lM0nO1"><div id="wk-chart" class="chart" data-page-node-id="wkP2qR3sT4uV5wX6yZ7aB8"></div></div>
+      <h3 data-page-node-id="wkL9mN0oP1qR2sT3uV4wX5">周度明细（含总计行，按周排序）</h3>
+      <div id="wk-table" class="table-box" data-page-node-id="wkY6zA7bC8dE9fG0hI1jK2"></div>
     </section>
 
     <!-- 口径说明 -->
-    <section class="panel" id="panel-notes" style="display:none">
-      <h3>事件映射表</h3>
-      <div id="nt-map"></div>
-      <h3>口径与已知局限</h3>
-      <div id="nt-cal"></div>
+    <section class="panel" id="panel-notes" style="display:none" data-page-node-id="GCsYjzqPaEIxZSlJ3Y32aH">
+      <h3 data-page-node-id="ceUAD5PpfOnHyvsZ3IdmP8">事件映射表</h3>
+      <div id="nt-map" data-page-node-id="qEUadQFWDD3HdZTkKoDZK5"></div>
+      <h3 data-page-node-id="lR6F9k0bc8YEiWR3pIuMTn">口径与已知局限</h3>
+      <div id="nt-cal" data-page-node-id="GBJDo1DNreCzMmP8HO8DMS"></div>
     </section>
   </main>
 
-  <footer class="foot">数据内置（离线可用，双击 index.html 即可打开）· 口径见「口径说明」Tab</footer>
+  <footer class="foot" data-page-node-id="q5lva95vzQsFozoZNEFZz1">数据内置（离线可用，双击 index.html 即可打开）· 口径见「口径说明」Tab</footer>
 
   <script src="js/vendor/echarts.min.js"></script>
   <script src="js/config.js"></script>

@@ -525,6 +525,92 @@
     $('mn-table').innerHTML = '<table><thead>' + head + '</thead><tbody>' + body + total + '</tbody></table>';
   }
 
+  /* ---------------- 渲染：按周分析（周三~周二） ---------------- */
+  function renderWeekly(facts) {
+    function pad(x) { return (x < 10 ? '0' : '') + x; }
+    // 周三(3) 为一周起点；返回该日期所在周的周三 YYYY-MM-DD
+    function wedOf(dStr) {
+      var p = String(dStr).split('-');
+      var dt = new Date(+p[0], +p[1] - 1, +p[2]);
+      var day = dt.getDay(); // 0=Sun..6=Sat
+      var offset = (day - 3 + 7) % 7; // 回到本周三所需回退天数
+      dt.setDate(dt.getDate() - offset);
+      return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+    }
+    function label(wk) {
+      var p = wk.split('-');
+      var wed = new Date(+p[0], +p[1] - 1, +p[2]);
+      var tue = new Date(wed); tue.setDate(wed.getDate() + 6);
+      return pad(wed.getMonth() + 1) + '/' + pad(wed.getDate()) + '~' + pad(tue.getMonth() + 1) + '/' + pad(tue.getDate());
+    }
+    var m = {};
+    facts.forEach(function (f) {
+      var wk = wedOf(f.d);
+      if (!m[wk]) m[wk] = {};
+      for (var c in f.ev) m[wk][c] = (m[wk][c] || 0) + f.ev[c];
+    });
+    var weeks = Object.keys(m).sort();
+    if (!weeks.length) {
+      $('wk-table').innerHTML = '<div class="alert-empty">当前筛选无数据</div>';
+      if (charts['wk-chart']) charts['wk-chart'].clear();
+      return;
+    }
+    var totEv = {};
+    var rows = weeks.map(function (wk) {
+      var a = m[wk];
+      Object.keys(a).forEach(function (c) { totEv[c] = (totEv[c] || 0) + a[c]; });
+      var visit = a['firstPagePv'] || 0;
+      var auth = (a['authorizeLoginSuccess'] || 0) + (a['70'] || 0);
+      var choose = a['choosecourse'] || 0;
+      var pay = a['paysubmit'] || 0;
+      var order = a['zero_order_success'] || 0;
+      return {
+        wk: wk, label: label(wk), visit: visit, order: order,
+        conv: visit ? order / visit : 0,
+        authR: visit ? auth / visit : 0,
+        chooseR: auth ? choose / auth : 0,
+        payR: choose ? pay / choose : 0,
+        orderR: pay ? order / pay : 0
+      };
+    });
+    var tv = totEv['firstPagePv'] || 0, tauth = (totEv['authorizeLoginSuccess'] || 0) + (totEv['70'] || 0);
+    var tchoose = totEv['choosecourse'] || 0, tpay = totEv['paysubmit'] || 0, torder = totEv['zero_order_success'] || 0;
+
+    chart('wk-chart');
+    if (charts['wk-chart']) charts['wk-chart'].setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { bottom: 0, data: ['访问UV', '订单成功UV', '整体转化率'] },
+      grid: { left: 64, right: 64, top: 44, bottom: 56 },
+      xAxis: { type: 'category', data: rows.map(function (r) { return r.label; }), axisLabel: { fontSize: 10, rotate: 30 } },
+      yAxis: [
+        { type: 'value', name: 'UV', axisLabel: { formatter: function (v) { return (v / 1000).toFixed(0) + 'k'; } } },
+        { type: 'value', name: '转化率', min: 0, max: 1, axisLabel: { formatter: function (v) { return (v * 100).toFixed(0) + '%'; } } }
+      ],
+      series: [
+        { name: '访问UV', type: 'bar', data: rows.map(function (r) { return r.visit; }), itemStyle: { color: '#2f7ed8' } },
+        { name: '订单成功UV', type: 'bar', data: rows.map(function (r) { return r.order; }), itemStyle: { color: '#27ae60' } },
+        { name: '整体转化率', type: 'line', yAxisIndex: 1, smooth: true, data: rows.map(function (r) { return r.conv; }), lineStyle: { width: 3 }, itemStyle: { color: '#e67e22' } }
+      ]
+    });
+
+    var cols = [
+      { t: '周（周三~周二）', f: function (r) { return r.label; } },
+      { t: '访问UV', s: true, f: function (r) { return fmt(r.visit); } },
+      { t: '订单成功UV', s: true, f: function (r) { return fmt(r.order); } },
+      { t: '整体转化率', s: true, f: function (r) { return pct(r.conv); } },
+      { t: '访问→授权', s: true, f: function (r) { return pct(r.authR); } },
+      { t: '授权→选课', s: true, f: function (r) { return pct(r.chooseR); } },
+      { t: '选课→支付', s: true, f: function (r) { return pct(r.payR); } },
+      { t: '支付→订单', s: true, f: function (r) { return pct(r.orderR); } }
+    ];
+    var head = '<tr>' + cols.map(function (c) { return '<th' + (c.s ? ' class="sortable"' : '') + '>' + c.t + '</th>'; }).join('') + '</tr>';
+    var body = rows.map(function (r) {
+      return '<tr>' + cols.map(function (c) { return '<td>' + c.f(r) + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    var total = '<tr class="total"><td>总计</td><td>' + fmt(tv) + '</td><td>' + fmt(torder) + '</td><td>' + pct(tv ? torder / tv : 0) + '</td><td>' + pct(tv ? tauth / tv : 0) + '</td><td>' + pct(tauth ? tchoose / tauth : 0) + '</td><td>' + pct(tchoose ? tpay / tchoose : 0) + '</td><td>' + pct(tpay ? torder / tpay : 0) + '</td></tr>';
+    $('wk-table').innerHTML = '<table><thead>' + head + '</thead><tbody>' + body + total + '</tbody></table>';
+  }
+
   /* ---------------- 渲染：口径说明 ---------------- */
   function renderNotes() {
     var map = C.EVENT_MAP;
@@ -560,8 +646,8 @@
   function renderActive() {
     var facts = filteredFacts(), agg = sumFromFacts(facts);
     if (!facts.length) {
-      ['ov-kpi', 'ov-bizline', 'ov-table', 'fn-table', 'tr-cmp', 'al-list', 'bk-cards', 'bk-table', 'nt-map', 'nt-cal', 'mn-table'].forEach(function (id) { if ($(id)) $(id).innerHTML = '<div class="alert-empty">当前筛选无数据</div>'; });
-      ['ov-funnel-main', 'fn-main', 'tr-main', 'bk-chart', 'mn-chart'].forEach(function (id) { if (charts[id]) charts[id].clear(); });
+      ['ov-kpi', 'ov-bizline', 'ov-table', 'fn-table', 'tr-cmp', 'al-list', 'bk-cards', 'bk-table', 'nt-map', 'nt-cal', 'mn-table', 'wk-table'].forEach(function (id) { if ($(id)) $(id).innerHTML = '<div class="alert-empty">当前筛选无数据</div>'; });
+      ['ov-funnel-main', 'fn-main', 'tr-main', 'bk-chart', 'mn-chart', 'wk-chart'].forEach(function (id) { if (charts[id]) charts[id].clear(); });
       return;
     }
     if (currentTab === 'overview') renderOverview(facts, agg);
@@ -569,6 +655,7 @@
     else if (currentTab === 'trend') renderTrend(facts);
     else if (currentTab === 'blocking') renderBlocking(facts, agg);
     else if (currentTab === 'monthly') renderMonthly(facts);
+    else if (currentTab === 'weekly') renderWeekly(facts);
     else if (currentTab === 'notes') renderNotes();
   }
 
