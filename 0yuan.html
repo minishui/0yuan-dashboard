@@ -739,7 +739,7 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <div id="dynamicTier2Charts" data-page-node-id="Tyy3hlu93Psc4lzZvHoeQx"></div>
 
     <!-- 3. 各城市占比 & 转率 -->
-    <div class="section-title" style="margin-top:24px;" data-page-node-id="GFwcIe4gpw2Drob12j6QTu">各城市在班占比 & 转化率（Top 20）</div>
+    <div class="section-title" style="margin-top:24px;" data-page-node-id="GFwcIe4gpw2Drob12j6QTu">各城市在班人次 & 转化率（Top 20）</div>
     <div class="chart-box" id="chartCityRank" style="min-height:420px;" data-page-node-id="aGSxRzc3GzdwxXNfDNQPnd"></div>
 
     <!-- 4. 全局：30城 vs 非30城 汇总 -->
@@ -763,7 +763,7 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <div id="dynamicCity30Charts" data-page-node-id="ikebXG5ffM0P4LeXfcsA0H"></div>
 
     <!-- 7. 30城内各城市占比 & 转率 -->
-    <div class="section-title" style="margin-top:24px;" data-page-node-id="2KlzyDes3kyHkeqFzyaXZD">30城内各城市在班占比 & 转化率</div>
+    <div class="section-title" style="margin-top:24px;" data-page-node-id="2KlzyDes3kyHkeqFzyaXZD">30城内各城市在班人次 & 转化率</div>
     <div class="chart-box" id="chartCity30Detail" style="min-height:420px;" data-page-node-id="ZNepuqFhcSxtghWL4iBgsZ"></div>
 
     <!-- 6. 30城汇总 + 分区明细 -->
@@ -5997,22 +5997,22 @@ function renderCity(records) {
     });
   });
 
-  // ===== 3. 各城市在班占比 & 转率（Top 20，按在班降序）=====
+  // ===== 3. 各城市在班人次 & 转化率（Top 20，按在班降序）=====
   const cityArr = Object.values(cityData).filter(c => c.在班人次 > 0).sort((a, b) => b.在班人次 - a.在班人次).slice(0, 20);
   const chartCityRank = getOrCreateChart('chartCityRank');
   if (chartCityRank) {
     chartCityRank.setOption({
       tooltip: { trigger: 'item', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 }, formatter: tooltipItemPctFormatter },
       legend: { top: 0, textStyle: { fontSize: 12, color: '#475569' } },
-      grid: { left: 70, right: 30, top: 40, bottom: 40, containLabel: true },
-      xAxis: { type: 'value', name: '在班人次', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { formatter: v => fmtInt(v), fontSize: 11, color: '#475569' }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } } },
-      yAxis: [
-        { type: 'category', data: cityArr.map(c => c.city).reverse(), axisLabel: { fontSize: 11, color: '#334155' } },
-        { type: 'value', name: '转化率', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { formatter: v => (v*100).toFixed(1)+'%', fontSize: 11, color: '#475569' }, splitLine: { show: false }, max: 1 }
+      grid: { left: 70, right: 30, top: 50, bottom: 40, containLabel: true },
+      xAxis: [
+        { type: 'value', name: '在班人次', nameLocation: 'middle', nameGap: 28, nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { formatter: v => fmtInt(v), fontSize: 11, color: '#475569' }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } } },
+        { type: 'value', name: '转化率', nameLocation: 'middle', nameGap: 28, position: 'top', max: 1, axisLabel: { formatter: v => (v*100).toFixed(0)+'%', fontSize: 11, color: '#475569' }, splitLine: { show: false }, axisLine: { lineStyle: { color: '#f59e0b' } }, axisTick: { lineStyle: { color: '#f59e0b' } }, nameTextStyle: { fontSize: 11, color: '#334155' } }
       ],
+      yAxis: { type: 'category', data: cityArr.map(c => c.city).reverse(), axisLabel: { fontSize: 11, color: '#334155' } },
       series: [
-        { name: '在班人次', type: 'bar', data: cityArr.map(c => c.在班人次).reverse(), itemStyle: { color: '#4f6ef7' }, barMaxWidth: 30, label: { show: true, position: 'right', formatter: p => fmtInt(p.value), fontSize: 11, color: '#334155' } },
-        { name: '转化率', type: 'line', yAxisIndex: 1, data: cityArr.map(c => safeDiv(c.转低人次, c.在班人次)).reverse(), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 6, label: { show: true, position: 'right', formatter: p => fmtPct(p.value), fontSize: 10, color: '#f59e0b' } }
+        { name: '在班人次', type: 'bar', xAxisIndex: 0, yAxisIndex: 0, data: cityArr.map(c => c.在班人次).reverse(), itemStyle: { color: '#4f6ef7' }, barMaxWidth: 30, label: { show: true, position: 'right', formatter: p => fmtInt(p.value), fontSize: 11, color: '#334155' } },
+        { name: '转化率', type: 'line', xAxisIndex: 1, yAxisIndex: 0, data: cityArr.map(c => safeDiv(c.转低人次, c.在班人次)).reverse(), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 6, label: { show: true, position: 'top', formatter: p => fmtPct(p.value), fontSize: 10, color: '#f59e0b' } }
       ]
     });
   }
@@ -6252,7 +6252,7 @@ function renderCity(records) {
     });
   });
 
-  // ===== 7. 30城内各城市在班占比 & 转率 =====
+  // ===== 7. 30城内各城市在班人次 & 转化率 =====
   const city30List = Object.values(cityData).filter(c => city30Set.has(c.city) && c.在班人次 > 0).sort((a, b) => b.在班人次 - a.在班人次);
   const total30 = city30List.reduce((s, c) => s + c.在班人次, 0);
   const chartCity30Detail = getOrCreateChart('chartCity30Detail');
@@ -6260,15 +6260,15 @@ function renderCity(records) {
     chartCity30Detail.setOption({
       tooltip: { trigger: 'item', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 }, formatter: tooltipItemPctFormatter },
       legend: { top: 0, textStyle: { fontSize: 12, color: '#475569' } },
-      grid: { left: 70, right: 30, top: 40, bottom: 40, containLabel: true },
-      xAxis: { type: 'value', name: '在班人次', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { formatter: v => fmtInt(v), fontSize: 11, color: '#475569' }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } } },
-      yAxis: [
-        { type: 'category', data: city30List.map(c => c.city).reverse(), axisLabel: { fontSize: 10, color: '#334155' } },
-        { type: 'value', name: '转化率', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { formatter: v => (v*100).toFixed(1)+'%', fontSize: 11, color: '#475569' }, splitLine: { show: false }, max: 1 }
+      grid: { left: 70, right: 30, top: 50, bottom: 40, containLabel: true },
+      xAxis: [
+        { type: 'value', name: '在班人次', nameLocation: 'middle', nameGap: 28, nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { formatter: v => fmtInt(v), fontSize: 11, color: '#475569' }, splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } } },
+        { type: 'value', name: '转化率', nameLocation: 'middle', nameGap: 28, position: 'top', max: 1, axisLabel: { formatter: v => (v*100).toFixed(0)+'%', fontSize: 11, color: '#475569' }, splitLine: { show: false }, axisLine: { lineStyle: { color: '#f59e0b' } }, axisTick: { lineStyle: { color: '#f59e0b' } }, nameTextStyle: { fontSize: 11, color: '#334155' } }
       ],
+      yAxis: { type: 'category', data: city30List.map(c => c.city).reverse(), axisLabel: { fontSize: 10, color: '#334155' } },
       series: [
-        { name: '在班人次', type: 'bar', data: city30List.map(c => c.在班人次).reverse(), itemStyle: { color: '#4f6ef7' }, barMaxWidth: 24, label: { show: true, position: 'right', formatter: p => fmtInt(p.value), fontSize: 10, color: '#334155' } },
-        { name: '转化率', type: 'line', yAxisIndex: 1, data: city30List.map(c => safeDiv(c.转低人次, c.在班人次)).reverse(), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 5 }
+        { name: '在班人次', type: 'bar', xAxisIndex: 0, yAxisIndex: 0, data: city30List.map(c => c.在班人次).reverse(), itemStyle: { color: '#4f6ef7' }, barMaxWidth: 24, label: { show: true, position: 'right', formatter: p => fmtInt(p.value), fontSize: 10, color: '#334155' } },
+        { name: '转化率', type: 'line', xAxisIndex: 1, yAxisIndex: 0, data: city30List.map(c => safeDiv(c.转低人次, c.在班人次)).reverse(), itemStyle: { color: '#f59e0b' }, lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 5 }
       ]
     });
   }
