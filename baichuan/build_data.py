@@ -10,6 +10,19 @@ FROZEN_PATH = os.path.join(BASE, 'frozen_baichuan.json')
 FREEZE_CUTOFF = '2026-09-01'
 FROZEN_LABEL = '2026-03 ~ 2026-08'
 
+def bump_baichuan_asset_version():
+    """把 baichuan/index.html 内本地资源引用的 ?v=YYYYMMDD 版本号更新为今天，破除浏览器/CDN 缓存。
+    否则用户浏览器会缓存旧版 app.js/css（即使门户 iframe 已破 index.html 缓存），导致新功能/改动看不到。"""
+    idx = os.path.join(BASE, 'index.html')
+    if not os.path.exists(idx):
+        return
+    today = datetime.datetime.now().strftime('%Y%m%d')
+    html = open(idx, 'r', encoding='utf-8').read()
+    new_html = re.sub(r'\?v=\d{8}', '?v=' + today, html)
+    if new_html != html:
+        open(idx, 'w', encoding='utf-8').write(new_html)
+        print(f'index.html 资源版本号已 bump 至 {today}（破缓存）')
+
 # ===== 动态识别最新百川底表 =====
 # 扫描 ~/Downloads 下「百川数据看板*2026-*.xlsx」，按文件名日期（YYYY-MM-DD）取最新，
 # 同日多个文件则取修改时间(mtime)最新。兜底：无日期匹配时取 mtime 最新。
@@ -213,6 +226,7 @@ def cmd_build():
     print(f"facts 条数: {len(facts):,}")
     print(f"pagekey 数: {len(pagekeys)}  (阅读={n_read}, 数学={n_math})  [{frozen_note}]")
     print(f"data.js 大小: {size / 1024 / 1024:.2f} MB -> {OUT}")
+    bump_baichuan_asset_version()
 
 if __name__ == '__main__':
     if '--freeze' in sys.argv:
