@@ -595,6 +595,12 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
       <div class="section-title" style="margin-top:12px;" data-page-node-id="lhocqvG33IcBL98gLvA0tm">分年级×辅导 明细表</div>
       <div class="table-wrap" id="tableGtDetail" data-page-node-id="I4L7KohdoU8nMZWJpyAWdE"></div>
     </div>
+    <!-- 分期次各年级占比 -->
+    <div class="section-title" style="margin-top:24px;" data-page-node-id="GRADEPS01">分期次各年级占比</div>
+    <div id="gradePeriodShareNote" style="font-size:12px;color:#64748b;margin:2px 0 8px;" data-page-node-id="GRADEPS04">每期次按在班人次拆分为各年级占比（堆叠 100%），可观察各年级结构随期次的迁移。</div>
+    <div class="chart-box tall" id="chartGradePeriodShare" style="min-height:420px;" data-page-node-id="GRADEPS02"></div>
+    <div class="section-title" style="margin-top:16px;" data-page-node-id="GRADEPS05">分期次各年级占比明细（在班人次 / 占比）</div>
+    <div class="table-wrap" id="tableGradePeriodShare" data-page-node-id="GRADEPS03"></div>
   </div>
   <div class="tab-content" id="tabDetail" data-page-node-id="UXRG8VLRr8WoGtwGWAH0sy">
     <div class="section-title" data-page-node-id="UpFIX5r6OBYIoGAGuTYEk4">渠道×期次 明细</div>
@@ -3541,8 +3547,111 @@ function renderGradePeriodHistory(records) {
   });
 }
 
+// ===== 年级分析：分期次各年级占比（堆叠 100%）=====
+function renderGradePeriodShare(records) {
+  var chart = getOrCreateChart('chartGradePeriodShare');
+  if (!chart) return;
+
+  // 1. 收集出现的年级（按年级数字升序）
+  var gradeSet = {};
+  records.forEach(function (r) {
+    var g = r['年级'] || '未知';
+    if (g && g !== '未知') gradeSet[g] = 1;
+  });
+  var grades = Object.keys(gradeSet).sort(function (a, b) { return parseInt(a) - parseInt(b); });
+  if (grades.length === 0) grades = ['1年级', '2年级', '3年级', '4年级', '5年级'];
+
+  // 2. 聚合 期次 -> 年级 -> 在班人次
+  var pm = {};
+  records.forEach(function (r) {
+    var p = r['期次'] || '未知';
+    var g = r['年级'] || '未知';
+    if (g === '未知') return;
+    if (!pm[p]) pm[p] = { key: p, total: 0, grades: {} };
+    if (!pm[p].grades[g]) pm[p].grades[g] = 0;
+    pm[p].grades[g] += r['在班人次'] || 0;
+    pm[p].total += r['在班人次'] || 0;
+  });
+
+  // 3. 期次排序（按 PERIOD_ORDER），只保留有数据的期次
+  var periods = Object.values(pm).filter(function (p) { return p.total > 0; });
+  periods.sort(function (a, b) { return PERIOD_ORDER.indexOf(a.key) - PERIOD_ORDER.indexOf(b.key); });
+  if (periods.length === 0) {
+    chart.clear();
+    document.getElementById('tableGradePeriodShare').innerHTML = '<div class="alert-empty">当前筛选无数据</div>';
+    return;
+  }
+  var pNames = periods.map(function (p) { return p.key; });
+
+  // 4. 堆叠百分比 series（每个年级一个 stack）
+  var GRADE_SHARE_COLORS = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  var series = grades.map(function (g, i) {
+    return {
+      name: g, type: 'bar', stack: 'share',
+      data: periods.map(function (p) { return safeDiv(p.grades[g] || 0, p.total); }),
+      itemStyle: { color: GRADE_SHARE_COLORS[i % GRADE_SHARE_COLORS.length] },
+      label: {
+        show: true,
+        formatter: function (pp) { return pp.value * 100 >= 8 ? (pp.value * 100).toFixed(0) + '%' : ''; },
+        fontSize: 9, color: '#fff', fontWeight: 'bold'
+      },
+      emphasis: { focus: 'series' }
+    };
+  });
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 },
+      formatter: function (params) {
+        var pi = periods[params[0].dataIndex];
+        var s = '<b>' + pi.key + '</b> 在班合计: ' + fmtInt(pi.total) + '<br/>';
+        params.forEach(function (p) {
+          if (p.value > 0) s += p.marker + p.seriesName + ': ' + fmtInt(pi.grades[p.seriesName] || 0) + ' (' + (p.value * 100).toFixed(1) + '%)<br/>';
+        });
+        return s;
+      }
+    },
+    legend: { data: grades, type: 'scroll', bottom: 8, textStyle: { fontSize: 11 }, itemWidth: 12, itemHeight: 8 },
+    grid: { left: 55, right: 30, top: 20, bottom: 70, containLabel: false },
+    xAxis: {
+      type: 'category', data: pNames,
+      axisLabel: { fontSize: 10, fontWeight: 600, color: '#1e293b', interval: 0, rotate: 30 },
+      axisLine: { lineStyle: { color: '#94a3b8' } }
+    },
+    yAxis: {
+      type: 'value', max: 1, name: '年级占比', nameTextStyle: { fontSize: 12, fontWeight: 600, color: '#334155' }, nameGap: 42,
+      axisLabel: { formatter: function (v) { return (v * 100).toFixed(0) + '%'; }, fontSize: 11 },
+      splitLine: { lineStyle: { color: '#e2e8f0', type: 'dashed' } }
+    },
+    series: series
+  }, true);
+
+  // 5. 明细表：行=期次，列=各年级在班 + 各年级占比 + 合计
+  var tbl = '<table class="data-table"><thead><tr><th>期次</th>';
+  grades.forEach(function (g) { tbl += '<th>' + g + '在班</th>'; });
+  grades.forEach(function (g) { tbl += '<th>' + g + '占比</th>'; });
+  tbl += '<th>合计</th></tr></thead><tbody>';
+  periods.forEach(function (p) {
+    tbl += '<tr><td>' + p.key + '</td>';
+    grades.forEach(function (g) { tbl += '<td>' + fmtInt(p.grades[g] || 0) + '</td>'; });
+    grades.forEach(function (g) { var v = p.grades[g] || 0; tbl += '<td>' + fmtPct(safeDiv(v, p.total)) + '</td>'; });
+    tbl += '<td>' + fmtInt(p.total) + '</td></tr>';
+  });
+  // 总计行
+  var tot = { total: 0 }; grades.forEach(function (g) { tot[g] = 0; });
+  periods.forEach(function (p) { tot.total += p.total; grades.forEach(function (g) { tot[g] += p.grades[g] || 0; }); });
+  tbl += '<tr class="drill-total"><td>总计</td>';
+  grades.forEach(function (g) { tbl += '<td>' + fmtInt(tot[g]) + '</td>'; });
+  grades.forEach(function (g) { tbl += '<td>' + fmtPct(safeDiv(tot[g], tot.total)) + '</td>'; });
+  tbl += '<td>' + fmtInt(tot.total) + '</td></tr>';
+  tbl += '</tbody></table>';
+  document.getElementById('tableGradePeriodShare').innerHTML = tbl;
+}
+
 function renderGrade(records) {
   renderGradePeriodHistory(records);
+  renderGradePeriodShare(records);
   const grades = aggregateBy(records, '年级');
   grades.sort((a, b) => parseInt(a.key) - parseInt(b.key));
 
