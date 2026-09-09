@@ -1299,12 +1299,12 @@ function parsePercent(str) {
 
 function isSummaryRow(tr) {
   if (tr.classList && tr.classList.contains('total-row')) return true;
-  var style = (tr.getAttribute('style') || '');
-  if (style.indexOf('background') !== -1) return true;
+  // 不再用 style.background 判断：热点分析里「严重偏低/偏低」行会加 background，
+  // 导致异常数据行被误跳、列内 min/max 高亮错乱（出现“次低值绿、次高值红”）。
   var first = tr.querySelector('td');
   if (first) {
     var txt = first.textContent.trim();
-    if (['合计','30城','非30城','二线及以上','二线以下'].indexOf(txt) !== -1) return true;
+    if (['合计','小计','30城','非30城','二线及以上','二线以下'].indexOf(txt) !== -1) return true;
   }
   return false;
 }
@@ -6838,10 +6838,10 @@ function renderFlow(records) {
 
     // ===== RATE TABLE (below main table) =====
     let rateHtml = '<div class="section-title" style="margin-top:16px;font-size:14px;">各渠道率类指标</div>';
-    rateHtml += '<table><thead><tr><th>渠道</th><th>加微率</th><th>加微率（加过）</th><th>APP登录率</th><th>摸底测覆盖率</th><th>课前激活率</th><th>课前破冰率</th><th>课前深沟率</th><th>首讲出勤率</th><th>首讲完课率</th><th>转化率</th><th>较上期</th></tr></thead><tbody>';
+    rateHtml += '<table><thead><tr><th>渠道</th><th>在班人次</th><th>加微率</th><th>加微率（加过）</th><th>APP登录率</th><th>摸底测覆盖率</th><th>课前激活率</th><th>课前破冰率</th><th>课前深沟率</th><th>首讲出勤率</th><th>首讲完课率</th><th>转化率</th><th>较上期</th></tr></thead><tbody>';
     var curMaxPeriodRate = getCurrentMaxPeriod();
     chList.forEach(c => {
-const r1 = safeDiv(c.加微人次, c.在班人次); const rOver = safeDiv(c.加过微人次, c.在班人次);
+      const r1 = safeDiv(c.加微人次, c.在班人次); const rOver = safeDiv(c.加过微人次, c.在班人次);
       const r2 = safeDiv(c.app登录人次, c.在班人次);
       const r3 = safeDiv(c.摸底测覆盖人次, c.在班人次);
       const r4 = safeDiv(c.课前激活人次, c.在班人次);
@@ -6852,6 +6852,7 @@ const r1 = safeDiv(c.加微人次, c.在班人次); const rOver = safeDiv(c.加�
       const r9 = safeDiv(c.转低人次, c.在班人次);
       var prevInfoRate = calcPrevPeriodDiff(curMaxPeriodRate, '渠道', c.channel, getCurrentExtraFilters());
       rateHtml += '<tr><td>' + c.channel + '</td>';
+      rateHtml += '<td>' + fmtInt(c.在班人次) + '</td>';
       rateHtml += '<td style="' + rateBg(r1) + '">' + fmtPct(r1) + '</td>';
       rateHtml += '<td style="' + rateBg(rOver) + '">' + fmtPct(rOver) + '</td>';
       rateHtml += '<td style="' + rateBg(r2) + '">' + fmtPct(r2) + '</td>';
@@ -6867,7 +6868,7 @@ const r1 = safeDiv(c.加微人次, c.在班人次); const rOver = safeDiv(c.加�
     });
 
     // Average row (weighted by 在班人次)
-const avgWx = safeDiv(chList.reduce((s,c) => s + c.加微人次, 0), chList.reduce((s,c) => s + c.在班人次, 0));
+    const avgWx = safeDiv(chList.reduce((s,c) => s + c.加微人次, 0), chList.reduce((s,c) => s + c.在班人次, 0));
     const avgWxOver = safeDiv(chList.reduce((s,c) => s + c.加过微人次, 0), chList.reduce((s,c) => s + c.在班人次, 0));
     const avgApp = safeDiv(chList.reduce((s,c) => s + c.app登录人次, 0), chList.reduce((s,c) => s + c.在班人次, 0));
     const avgMdc = safeDiv(chList.reduce((s,c) => s + c.摸底测覆盖人次, 0), chList.reduce((s,c) => s + c.在班人次, 0));
@@ -6878,6 +6879,7 @@ const avgWx = safeDiv(chList.reduce((s,c) => s + c.加微人次, 0), chList.redu
     const avgFf = safeDiv(chList.reduce((s,c) => s + c.一讲完课人数, 0), chList.reduce((s,c) => s + c.在班人次, 0));
     const avgCv = safeDiv(chList.reduce((s,c) => s + c.转低人次, 0), chList.reduce((s,c) => s + c.在班人次, 0));
     rateHtml += '<tr class="total-row"><td>均值</td>';
+    rateHtml += '<td>' + fmtInt(totalLeads) + '</td>';
     rateHtml += '<td>' + fmtPct(avgWx) + '</td>';
     rateHtml += '<td>' + fmtPct(avgWxOver) + '</td>';
     rateHtml += '<td>' + fmtPct(avgApp) + '</td>';
