@@ -3627,26 +3627,51 @@ function renderGradePeriodShare(records) {
     series: series
   }, true);
 
-  // 5. 明细表：行=期次，列=各年级在班 + 各年级占比 + 合计
-  var tbl = '<table class="data-table"><thead><tr><th>期次</th>';
-  grades.forEach(function (g) { tbl += '<th>' + g + '在班</th>'; });
-  grades.forEach(function (g) { tbl += '<th>' + g + '占比</th>'; });
-  tbl += '<th>合计</th></tr></thead><tbody>';
+  // 5. 表一：在班人次（行=期次，列=各年级在班 + 合计）
+  var tblCount = '<table class="data-table"><thead><tr><th>期次</th>';
+  grades.forEach(function (g) { tblCount += '<th>' + g + '</th>'; });
+  tblCount += '<th>合计</th></tr></thead><tbody>';
   periods.forEach(function (p) {
-    tbl += '<tr><td>' + p.key + '</td>';
-    grades.forEach(function (g) { tbl += '<td>' + fmtInt(p.grades[g] || 0) + '</td>'; });
-    grades.forEach(function (g) { var v = p.grades[g] || 0; tbl += '<td>' + fmtPct(safeDiv(v, p.total)) + '</td>'; });
-    tbl += '<td>' + fmtInt(p.total) + '</td></tr>';
+    tblCount += '<tr><td>' + p.key + '</td>';
+    grades.forEach(function (g) { tblCount += '<td>' + fmtInt(p.grades[g] || 0) + '</td>'; });
+    tblCount += '<td>' + fmtInt(p.total) + '</td></tr>';
   });
-  // 总计行
   var tot = { total: 0 }; grades.forEach(function (g) { tot[g] = 0; });
   periods.forEach(function (p) { tot.total += p.total; grades.forEach(function (g) { tot[g] += p.grades[g] || 0; }); });
-  tbl += '<tr class="drill-total"><td>总计</td>';
-  grades.forEach(function (g) { tbl += '<td>' + fmtInt(tot[g]) + '</td>'; });
-  grades.forEach(function (g) { tbl += '<td>' + fmtPct(safeDiv(tot[g], tot.total)) + '</td>'; });
-  tbl += '<td>' + fmtInt(tot.total) + '</td></tr>';
-  tbl += '</tbody></table>';
-  document.getElementById('tableGradePeriodShare').innerHTML = tbl;
+  tblCount += '<tr class="drill-total"><td>总计</td>';
+  grades.forEach(function (g) { tblCount += '<td>' + fmtInt(tot[g]) + '</td>'; });
+  tblCount += '<td>' + fmtInt(tot.total) + '</td></tr>';
+  tblCount += '</tbody></table>';
+  document.getElementById('tableGradePeriodCount').innerHTML = tblCount;
+
+  // 6. 表二：占比（行=期次，列=各年级占比），按「期内各年级占比高低」红绿着色（最高绿、最低红，无数据灰）
+  function shareColor(share, sharesInPeriod) {
+    if (share <= 0) return 'background:#f1f5f9;color:#94a3b8;';
+    var vals = sharesInPeriod.filter(function (v) { return v > 0; });
+    if (vals.length === 0) return '';
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    var norm = (mx === mn) ? 1 : (share - mn) / (mx - mn);
+    var hue = Math.round(norm * 120); // 0=红(最低) 120=绿(最高)
+    return 'background:hsl(' + hue + ',72%,90%);color:#1e293b;';
+  }
+  var tblPct = '<table class="data-table"><thead><tr><th>期次</th>';
+  grades.forEach(function (g) { tblPct += '<th>' + g + '</th>'; });
+  tblPct += '<th>合计</th></tr></thead><tbody>';
+  periods.forEach(function (p) {
+    var shares = grades.map(function (g) { return safeDiv(p.grades[g] || 0, p.total); });
+    tblPct += '<tr><td>' + p.key + '</td>';
+    grades.forEach(function (g, gi) {
+      var sh = shares[gi];
+      tblPct += '<td style="' + shareColor(sh, shares) + '">' + fmtPct(sh) + '</td>';
+    });
+    tblPct += '<td style="font-weight:600;">100.0%</td></tr>';
+  });
+  var totShares = grades.map(function (g) { return safeDiv(tot[g], tot.total); });
+  tblPct += '<tr class="drill-total"><td>总计</td>';
+  grades.forEach(function (g, gi) { tblPct += '<td style="' + shareColor(totShares[gi], totShares) + '">' + fmtPct(totShares[gi]) + '</td>'; });
+  tblPct += '<td style="font-weight:600;">100.0%</td></tr>';
+  tblPct += '</tbody></table>';
+  document.getElementById('tableGradePeriodSharePct').innerHTML = tblPct;
 }
 
 function renderGrade(records) {
