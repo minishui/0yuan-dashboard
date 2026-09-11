@@ -405,6 +405,7 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <button class="tab-btn" onclick="switchTab('trend')" data-page-node-id="4DYVOl9fl0g5msRBMTkRxF">趋势总览</button>
     <button class="tab-btn" onclick="switchTab('channel')" data-page-node-id="iAmoBRF6c4YMxFxGu04ItJ">渠道对比</button>
     <button class="tab-btn" onclick="switchTab('grade')" data-page-node-id="DZ9Ogtk8mmtjmfaQfspc8Z">年级分析</button>
+    <button class="tab-btn" onclick="switchTab('chgrade')" data-page-node-id="cgTabBtnChGrade">渠道年级</button>
     <button class="tab-btn" onclick="switchTab('city')" data-page-node-id="6UbAnO9KI2K1W537B1ek9Z">城市分析</button>
     <button class="tab-btn" onclick="switchTab('hotspot')" data-page-node-id="sBRVqtFMWGfiHOh288fSVy">热点分析</button>
     <button class="tab-btn" onclick="switchTab('detail')" data-page-node-id="kcBLAYIeGR6HPyo58JRwau">明细数据</button>
@@ -735,6 +736,29 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
         <tr data-page-node-id="U9BpumjaDfKQITYwtKCqkf"><td data-page-node-id="AEYZbO5tEYJSvQAzG7s93c">夏1期</td><td data-page-node-id="VdBSxKSpeigOAoRvTnkECG">2026-05-27</td><td data-page-node-id="sBk8OgvBbcW7CNMWNyOTkQ">标准周期 5/27-6/2，排除5/25-5/26（阅读课提前开售）</td></tr>
       </table>
     </div>
+  </div>
+  <div class="tab-content" id="tabChgrade" data-page-node-id="cgTabContentChGrade">
+    <div class="section-title" data-page-node-id="cgTitleChGrade">渠道 × 年级 在班人次与占比</div>
+    <div class="cg-note" data-page-node-id="cgNoteChGrade">
+      渠道为行、年级（L1~L5）为列；单元格 = 在班人次（占本渠道比例），背景数据条长度按全表最大单格归一；
+      右下角「合计」为全渠道各年级汇总。所有指标随上方筛选器（期次 / 渠道 / 年级 / 城市 等）实时联动。
+    </div>
+    <div class="table-wrap" id="tableChannelGrade" data-page-node-id="cgTableChGrade"></div>
+    <style data-page-node-id="cgStyleChGrade">
+      .cg-note{font-size:12px;color:var(--text-secondary);background:var(--primary-light);border-left:3px solid var(--primary);padding:8px 12px;border-radius:6px;margin:4px 0 12px;line-height:1.7}
+      #tableChannelGrade table{table-layout:auto}
+      #tableChannelGrade th,#tableChannelGrade td{text-align:center}
+      #tableChannelGrade td.cg-rowh,#tableChannelGrade th.cg-rowh{text-align:left;font-weight:600;background:#f0f3f8;position:sticky;left:0;z-index:1;white-space:nowrap}
+      #tableChannelGrade td.cg-tot{font-weight:700;background:#fafcff}
+      #tableChannelGrade td.cg-rp{color:#16a34a;font-weight:600}
+      #tableChannelGrade .cg-cell{position:relative;min-width:96px;padding:0!important}
+      #tableChannelGrade .cg-bar{position:absolute;left:0;top:50%;transform:translateY(-50%);height:62%;border-radius:5px;opacity:.5;background:linear-gradient(90deg,#7eb6ff,#4a90e2)}
+      #tableChannelGrade .cg-txt{position:relative;z-index:1;padding:9px 8px}
+      #tableChannelGrade .cg-txt b{font-variant-numeric:tabular-nums}
+      #tableChannelGrade .cg-pct{color:#8a93a3;font-size:11px;font-weight:400;margin-left:3px}
+      #tableChannelGrade tr.cg-sum th,#tableChannelGrade tr.cg-sum td{background:#fff6e6;font-weight:700;border-top:2px solid #f0c674}
+      #tableChannelGrade tr:hover td,#tableChannelGrade tr:hover th{background:#f3f8ff}
+    </style>
   </div>
   <div class="tab-content" id="tabCity" data-page-node-id="uCHGnidOv9ofwx9q4UaInz">
     <!-- 1. 各渠道城市等级分布（拉宽，独占一行） -->
@@ -4856,6 +4880,64 @@ function renderKPIs(records) {
     '<div class="kpi-card"><div class="kpi-label">筛选范围</div><div class="kpi-value" style="font-size:18px;">' + records.length + ' 条</div><div class="kpi-sub">' + new Set(records.map(r => r.期次)).size + ' 个期次</div></div>';
 }
 
+// ===== CHANNEL × GRADE 在班人次与占比（与筛选联动）=====
+function renderChannelGrade(records) {
+  const GRADES = ['1年级', '2年级', '3年级', '4年级', '5年级'];
+  const GLAB = { '1年级': 'L1', '2年级': 'L2', '3年级': 'L3', '4年级': 'L4', '5年级': 'L5' };
+  const sumOf = m => GRADES.reduce((s, g) => s + (m[g] || 0), 0);
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // 聚合 渠道 × 年级
+  const agg = {};
+  records.forEach(r => {
+    const ch = r['渠道'] || '未知';
+    const gr = r['年级'] || '未知';
+    if (!GRADES.includes(gr)) return;
+    if (!agg[ch]) agg[ch] = {};
+    agg[ch][gr] = (agg[ch][gr] || 0) + (r['在班人次'] || 0);
+  });
+
+  const chans = Object.keys(agg).sort((a, b) => sumOf(agg[b]) - sumOf(agg[a]));
+  const grand = chans.reduce((s, c) => s + sumOf(agg[c]), 0);
+  let maxCell = 1;
+  chans.forEach(c => GRADES.forEach(g => { const v = agg[c][g] || 0; if (v > maxCell) maxCell = v; }));
+
+  if (chans.length === 0) {
+    document.getElementById('tableChannelGrade').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 当前筛选条件下无渠道×年级数据</div>';
+    return;
+  }
+
+  let head = '<thead><tr><th class="cg-rowh">渠道</th>';
+  GRADES.forEach(g => head += `<th>${GLAB[g]}<br><span style="font-weight:400;font-size:11px;opacity:.7">${g}</span></th>`);
+  head += '<th>总计人次</th><th>占比</th></tr></thead>';
+
+  let body = '<tbody>';
+  chans.forEach(c => {
+    const m = agg[c]; const tot = sumOf(m); const rp = grand ? tot / grand * 100 : 0;
+    let cells = '';
+    GRADES.forEach(g => {
+      const v = m[g] || 0;
+      const pct = tot ? v / tot * 100 : 0;
+      const w = (v / maxCell * 100).toFixed(1);
+      cells += `<td class="cg-cell"><div class="cg-bar" style="width:${w}%"></div><div class="cg-txt"><b>${fmtInt(v)}</b><span class="cg-pct">${pct.toFixed(1)}%</span></div></td>`;
+    });
+    body += `<tr><th class="cg-rowh">${esc(c)}</th>${cells}<td class="cg-tot">${fmtInt(tot)}</td><td class="cg-rp">${rp.toFixed(1)}%</td></tr>`;
+  });
+
+  let sumCells = '';
+  let gsumTot = 0;
+  GRADES.forEach(g => {
+    const sv = chans.reduce((s, c) => s + (agg[c][g] || 0), 0);
+    const sp = grand ? sv / grand * 100 : 0;
+    gsumTot += sv;
+    sumCells += `<td>${fmtInt(sv)}<br><span class="cg-pct">${sp.toFixed(1)}%</span></td>`;
+  });
+  body += `<tr class="cg-sum"><th class="cg-rowh">合计</th>${sumCells}<td class="cg-tot">${fmtInt(gsumTot)}</td><td class="cg-rp">100.0%</td></tr>`;
+  body += '</tbody>';
+
+  document.getElementById('tableChannelGrade').innerHTML = `<table>${head}${body}</table>`;
+}
+
 // ===== RENDER ALL =====
 function renderAll() {
   if (currentTab === 'settlement') { renderSettlement(); return; }
@@ -4868,6 +4950,7 @@ function renderAll() {
   if (currentTab === 'trend') renderTrend(records);
   else if (currentTab === 'channel') renderChannel(records);
   else if (currentTab === 'grade') renderGrade(records);
+  else if (currentTab === 'chgrade') renderChannelGrade(records);
   else if (currentTab === 'detail') renderDetail(records);
   else if (currentTab === 'bd') renderBdMonthly(records);
   else if (currentTab === 'city') renderCity(records);
@@ -4882,12 +4965,12 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  const tabMap = { trend: 'Trend', channel: 'Channel', grade: 'Grade', detail: 'Detail', bd: 'Bd', logic: 'Logic', city: 'City', hotspot: 'Hotspot', flow: 'Flow', fullfunnel: 'FullFunnel', settlement: 'Settlement' };
+  const tabMap = { trend: 'Trend', channel: 'Channel', grade: 'Grade', chgrade: 'Chgrade', detail: 'Detail', bd: 'Bd', logic: 'Logic', city: 'City', hotspot: 'Hotspot', flow: 'Flow', fullfunnel: 'FullFunnel', settlement: 'Settlement' };
   const contentDiv = document.getElementById('tab' + tabMap[tab]);
   if (contentDiv) contentDiv.classList.add('active');
   // Find the button and activate it
   Array.from(document.querySelectorAll('.tab-btn')).forEach(b => {
-    const labelMap = { trend: '趋势', channel: '渠道', grade: '年级', detail: '明细', bd: '商务', logic: '字段', city: '城市', hotspot: '热点', flow: '流量', fullfunnel: '全链路', settlement: '结算' };
+    const labelMap = { trend: '趋势', channel: '渠道', grade: '年级', chgrade: '渠道年级', detail: '明细', bd: '商务', logic: '字段', city: '城市', hotspot: '热点', flow: '流量', fullfunnel: '全链路', settlement: '结算' };
     if (b.textContent.includes(labelMap[tab])) b.classList.add('active');
   });
   // Resize charts on tab switch
