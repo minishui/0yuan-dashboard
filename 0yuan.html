@@ -748,15 +748,18 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
       .cg-note{font-size:12px;color:var(--text-secondary);background:var(--primary-light);border-left:3px solid var(--primary);padding:8px 12px;border-radius:6px;margin:4px 0 12px;line-height:1.7}
       #tableChannelGrade table{table-layout:auto}
       #tableChannelGrade th,#tableChannelGrade td{text-align:center}
-      #tableChannelGrade td.cg-rowh,#tableChannelGrade th.cg-rowh{text-align:left;font-weight:600;background:#f0f3f8;position:sticky;left:0;z-index:1;white-space:nowrap}
-      #tableChannelGrade td.cg-tot{font-weight:700;background:#fafcff}
-      #tableChannelGrade td.cg-rp{color:#16a34a;font-weight:600}
-      #tableChannelGrade .cg-cell{position:relative;min-width:96px;padding:0!important}
-      #tableChannelGrade .cg-bar{position:absolute;left:0;top:50%;transform:translateY(-50%);height:62%;border-radius:5px;opacity:.5;background:linear-gradient(90deg,#7eb6ff,#4a90e2)}
-      #tableChannelGrade .cg-txt{position:relative;z-index:1;padding:9px 8px}
-      #tableChannelGrade .cg-txt b{font-variant-numeric:tabular-nums}
-      #tableChannelGrade .cg-pct{color:#8a93a3;font-size:11px;font-weight:400;margin-left:3px}
-      #tableChannelGrade tr.cg-sum th,#tableChannelGrade tr.cg-sum td{background:#fff6e6;font-weight:700;border-top:2px solid #f0c674}
+      #tableChannelGrade{font-size:15px}
+      #tableChannelGrade td,#tableChannelGrade th{padding:10px 12px;border-bottom:1px solid #e2e8f0}
+      #tableChannelGrade thead th{background:#1e293b;color:#fff;font-size:14px;font-weight:700}
+      #tableChannelGrade td.cg-rowh,#tableChannelGrade th.cg-rowh{text-align:left;font-weight:700;background:#f1f5f9;position:sticky;left:0;z-index:1;white-space:nowrap;font-size:14px;color:#0f172a}
+      #tableChannelGrade td.cg-tot{font-weight:800;background:#f8fafc;font-size:15px;color:#0f172a}
+      #tableChannelGrade td.cg-rp{color:#334155;font-weight:700;font-size:15px}
+      #tableChannelGrade .cg-cell{position:relative;min-width:110px;padding:0!important}
+      #tableChannelGrade .cg-bar{position:absolute;left:0;top:50%;transform:translateY(-50%);height:65%;border-radius:6px;opacity:.55;background:linear-gradient(90deg,#60a5fa,#3b82f6)}
+      #tableChannelGrade .cg-txt{position:relative;z-index:1;padding:10px 10px}
+      #tableChannelGrade .cg-txt b{font-variant-numeric:tabular-nums;font-weight:800;font-size:16px;color:#0f172a}
+      #tableChannelGrade .cg-pct{color:#475569;font-size:13px;font-weight:600;margin-left:4px}
+      #tableChannelGrade tr.cg-sum th,#tableChannelGrade tr.cg-sum td{background:#fefce8;font-weight:800;border-top:2px solid #eab308}
       #tableChannelGrade tr:hover td,#tableChannelGrade tr:hover th{background:#f3f8ff}
     </style>
   </div>
@@ -4899,8 +4902,6 @@ function renderChannelGrade(records) {
 
   const chans = Object.keys(agg).sort((a, b) => sumOf(agg[b]) - sumOf(agg[a]));
   const grand = chans.reduce((s, c) => s + sumOf(agg[c]), 0);
-  let maxCell = 1;
-  chans.forEach(c => GRADES.forEach(g => { const v = agg[c][g] || 0; if (v > maxCell) maxCell = v; }));
 
   if (chans.length === 0) {
     document.getElementById('tableChannelGrade').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 当前筛选条件下无渠道×年级数据</div>';
@@ -4914,11 +4915,12 @@ function renderChannelGrade(records) {
   let body = '<tbody>';
   chans.forEach(c => {
     const m = agg[c]; const tot = sumOf(m); const rp = grand ? tot / grand * 100 : 0;
+    const rowMax = Math.max(1, ...GRADES.map(g => m[g] || 0));
     let cells = '';
     GRADES.forEach(g => {
       const v = m[g] || 0;
       const pct = tot ? v / tot * 100 : 0;
-      const w = (v / maxCell * 100).toFixed(1);
+      const w = (v / rowMax * 100).toFixed(1);
       cells += `<td class="cg-cell"><div class="cg-bar" style="width:${w}%"></div><div class="cg-txt"><b>${fmtInt(v)}</b><span class="cg-pct">${pct.toFixed(1)}%</span></div></td>`;
     });
     body += `<tr><th class="cg-rowh">${esc(c)}</th>${cells}<td class="cg-tot">${fmtInt(tot)}</td><td class="cg-rp">${rp.toFixed(1)}%</td></tr>`;
