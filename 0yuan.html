@@ -761,7 +761,33 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
       #tableChannelGrade .cg-pct{color:#475569;font-size:13px;font-weight:600;margin-left:4px}
       #tableChannelGrade tr.cg-sum th,#tableChannelGrade tr.cg-sum td{background:#fefce8;font-weight:800;border-top:2px solid #eab308}
       #tableChannelGrade tr:hover td,#tableChannelGrade tr:hover th{background:#f3f8ff}
+      /* 模块2：渠道×每日进量 */
+      #cgDailyTable table{table-layout:auto}
+      #cgDailyTable th,#cgDailyTable td{text-align:center}
+      #cgDailyTable{font-size:15px}
+      #cgDailyTable td,#cgDailyTable th{padding:10px 12px;border-bottom:1px solid #e2e8f0}
+      #cgDailyTable thead th{background:#1e293b;color:#fff;font-size:14px;font-weight:700}
+      #cgDailyTable td.cg-rowh,#cgDailyTable th.cg-rowh{text-align:left;font-weight:700;background:#f1f5f9;white-space:nowrap;font-size:14px;color:#0f172a}
+      #cgDailyTable td.cg-tot{font-weight:800;background:#f8fafc;font-size:15px;color:#0f172a}
+      #cgDailyTable td.cg-rp{color:#334155;font-weight:700;font-size:15px}
+      #cgDailyTable tr.cg-sum th,#cgDailyTable tr.cg-sum td{background:#fefce8;font-weight:800;border-top:2px solid #eab308}
+      #cgDailyTable tr:hover td,#cgDailyTable tr:hover th{background:#f3f8ff}
+      #cgDailySel:focus{outline:none;border-color:#3b82f6}
     </style>
+
+    <!-- 模块2：渠道 × 每日进量（含年级比例） -->
+    <div class="section-title" style="margin-top:28px;" data-page-node-id="cg2TitleDaily">渠道 × 每日进量（含年级比例）</div>
+    <div class="cg-note" data-page-node-id="cg2NoteDaily">
+      按渠道拆解每日进量（在班人次，以「购课日期」为口径）；默认展示进量最高的渠道，可用下拉切换。
+      柱形按年级（L1~L5）堆叠，悬浮查看每日各年级进量与占比；下方表格按日期列出每日合计进量及各年级比例。
+      随上方筛选器（期次 / 渠道 / 年级 / 城市 等）实时联动——在年级筛选开启时，年级比例仅含所选年级。
+    </div>
+    <div style="margin:8px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-secondary);">渠道：</label>
+      <select id="cgDailySel" data-page-node-id="cgDailySel" style="padding:6px 10px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px;min-width:220px;background:#fff;"></select>
+    </div>
+    <div class="chart-box" id="cgDailyChart" style="width:100%;min-height:420px;" data-page-node-id="cgDailyChart"></div>
+    <div class="table-wrap" id="cgDailyTable" style="margin-top:12px;" data-page-node-id="cgDailyTable"></div>
   </div>
   <div class="tab-content" id="tabCity" data-page-node-id="uCHGnidOv9ofwx9q4UaInz">
     <!-- 1. 各渠道城市等级分布（拉宽，独占一行） -->
@@ -4903,11 +4929,10 @@ function renderChannelGrade(records) {
   const chans = Object.keys(agg).sort((a, b) => sumOf(agg[b]) - sumOf(agg[a]));
   const grand = chans.reduce((s, c) => s + sumOf(agg[c]), 0);
 
+  const tblEl = document.getElementById('tableChannelGrade');
   if (chans.length === 0) {
-    document.getElementById('tableChannelGrade').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 当前筛选条件下无渠道×年级数据</div>';
-    return;
-  }
-
+    tblEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 当前筛选条件下无渠道×年级数据</div>';
+  } else {
   let head = '<thead><tr><th class="cg-rowh">渠道</th>';
   GRADES.forEach(g => head += `<th>${GLAB[g]}<br><span style="font-weight:400;font-size:11px;opacity:.7">${g}</span></th>`);
   head += '<th>总计人次</th><th>占比</th></tr></thead>';
@@ -4937,7 +4962,148 @@ function renderChannelGrade(records) {
   body += `<tr class="cg-sum"><th class="cg-rowh">合计</th>${sumCells}<td class="cg-tot">${fmtInt(gsumTot)}</td><td class="cg-rp">100.0%</td></tr>`;
   body += '</tbody>';
 
-  document.getElementById('tableChannelGrade').innerHTML = `<table>${head}${body}</table>`;
+    tblEl.innerHTML = `<table>${head}${body}</table>`;
+  }
+
+  // 模块2：渠道 × 每日进量（含年级比例）
+  renderChannelGradeDaily(records);
+}
+
+// ===== 渠道年级 Tab · 模块2：渠道 × 每日进量（含年级比例）=====
+var CG_DAILY = { agg: null, dates: null, channels: null };
+
+function renderChannelGradeDaily(records) {
+  const GRADES = ['1年级', '2年级', '3年级', '4年级', '5年级'];
+  const GLAB = { '1年级': 'L1', '2年级': 'L2', '3年级': 'L3', '4年级': 'L4', '5年级': 'L5' };
+  const GCOL = { '1年级': '#60a5fa', '2年级': '#34d399', '3年级': '#fbbf24', '4年级': '#f87171', '5年级': '#a78bfa' };
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const sumOf = m => GRADES.reduce((s, g) => s + ((m && m[g]) || 0), 0);
+
+  // 聚合 渠道 × 购课日期 × 年级（进量 = 在班人次）
+  const agg = {};       // agg[ch][date][grade] = 在班人次
+  const chTot = {};     // 渠道 总进量
+  records.forEach(r => {
+    const d = r['购课日期'];
+    if (!d) return;
+    const ch = r['渠道'] || '未知';
+    const gr = r['年级'] || '未知';
+    if (!GRADES.includes(gr)) return;
+    if (!agg[ch]) agg[ch] = {};
+    if (!agg[ch][d]) agg[ch][d] = {};
+    agg[ch][d][gr] = (agg[ch][d][gr] || 0) + (r['在班人次'] || 0);
+    chTot[ch] = (chTot[ch] || 0) + (r['在班人次'] || 0);
+  });
+
+  const channels = Object.keys(chTot).sort((a, b) => chTot[b] - chTot[a]);
+  const dates = [...new Set(records.map(r => r['购课日期']).filter(Boolean))].sort();
+
+  CG_DAILY.agg = agg; CG_DAILY.dates = dates; CG_DAILY.channels = channels;
+
+  const selEl = document.getElementById('cgDailySel');
+  const chartEl = document.getElementById('cgDailyChart');
+  const tableEl = document.getElementById('cgDailyTable');
+
+  if (channels.length === 0 || dates.length === 0) {
+    if (selEl) selEl.innerHTML = '';
+    if (chartEl) chartEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 当前筛选条件下无每日进量数据（需含有「购课日期」的记录）</div>';
+    if (tableEl) tableEl.innerHTML = '';
+    return;
+  }
+
+  const prev = selEl.value;
+  selEl.innerHTML = channels.map(c => `<option value="${esc(c)}">${esc(c)}（${fmtInt(chTot[c])}）</option>`).join('');
+  const cur = (prev && channels.includes(prev)) ? prev : channels[0];
+  selEl.value = cur;
+  if (!selEl._bound) { selEl.addEventListener('change', onCgDailyChannelChange); selEl._bound = true; }
+
+  drawCgDaily(cur);
+}
+
+function onCgDailyChannelChange() {
+  const selEl = document.getElementById('cgDailySel');
+  if (selEl) drawCgDaily(selEl.value);
+}
+
+function drawCgDaily(ch) {
+  const GRADES = ['1年级', '2年级', '3年级', '4年级', '5年级'];
+  const GLAB = { '1年级': 'L1', '2年级': 'L2', '3年级': 'L3', '4年级': 'L4', '5年级': 'L5' };
+  const GCOL = { '1年级': '#60a5fa', '2年级': '#34d399', '3年级': '#fbbf24', '4年级': '#f87171', '5年级': '#a78bfa' };
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const dates = CG_DAILY.dates || [];
+  const perCh = (CG_DAILY.agg && CG_DAILY.agg[ch]) || {};
+  if (!dates.length) return;
+
+  // ===== 堆叠柱图：每日进量（按年级）=====
+  const chart = getOrCreateChart('cgDailyChart');
+  if (chart) {
+    const series = GRADES.map(g => ({
+      name: GLAB[g],
+      type: 'bar',
+      stack: 'total',
+      itemStyle: { color: GCOL[g] },
+      emphasis: { focus: 'series' },
+      data: dates.map(d => (perCh[d] && perCh[d][g]) || 0)
+    }));
+    chart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: function (ps) {
+          const d = ps[0].axisValue;
+          let total = 0; ps.forEach(p => total += p.value);
+          let s = `<b>${esc(d)}</b><br/>合计进量：${fmtInt(total)}`;
+          ps.slice().reverse().forEach(p => {
+            const pct = total ? (p.value / total * 100).toFixed(1) : '0.0';
+            s += `<br/>${p.marker}${p.seriesName}：${fmtInt(p.value)}（${pct}%）`;
+          });
+          return s;
+        }
+      },
+      legend: { data: GRADES.map(g => GLAB[g]), top: 0 },
+      grid: { left: 64, right: 24, top: 40, bottom: 72 },
+      dataZoom: [{ type: 'slider', start: 0, end: 100, bottom: 14, height: 18 }, { type: 'inside' }],
+      xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45, fontSize: 11 } },
+      yAxis: { type: 'value', name: '进量(在班人次)', nameTextStyle: { fontSize: 12, color: '#334155' }, axisLabel: { formatter: v => fmtInt(v), fontSize: 11 } },
+      series: series
+    }, true);
+    chart.resize();
+  }
+
+  // ===== 明细表：每日合计进量 + 各年级占比 =====
+  const tableEl = document.getElementById('cgDailyTable');
+  if (!tableEl) return;
+  let head = '<thead><tr><th class="cg-rowh">购课日期</th>';
+  GRADES.forEach(g => head += `<th>${GLAB[g]}<br><span style="font-weight:400;font-size:11px;opacity:.7">${g}</span></th>`);
+  head += '<th>合计进量</th>';
+  GRADES.forEach(g => head += `<th>${GLAB[g]}占比</th>`);
+  head += '</tr></thead>';
+
+  let body = '<tbody>';
+  const colTot = GRADES.map(() => 0);
+  let grandTot = 0;
+  dates.forEach(d => {
+    const m = perCh[d] || {};
+    const tot = sumOf(m);
+    grandTot += tot;
+    GRADES.forEach((g, i) => colTot[i] += (m[g] || 0));
+    let cells = '';
+    GRADES.forEach(g => { cells += `<td>${fmtInt(m[g] || 0)}</td>`; });
+    body += `<tr><th class="cg-rowh">${esc(d)}</th>${cells}<td class="cg-tot">${fmtInt(tot)}</td>`;
+    GRADES.forEach(g => {
+      const pct = tot ? (m[g] || 0) / tot * 100 : 0;
+      body += `<td class="cg-rp">${pct.toFixed(1)}%</td>`;
+    });
+    body += '</tr>';
+  });
+  let tcells = '';
+  GRADES.forEach((g, i) => tcells += `<td>${fmtInt(colTot[i])}</td>`);
+  body += `<tr class="cg-sum"><th class="cg-rowh">合计</th>${tcells}<td class="cg-tot">${fmtInt(grandTot)}</td>`;
+  GRADES.forEach((g, i) => {
+    const pct = grandTot ? colTot[i] / grandTot * 100 : 0;
+    body += `<td class="cg-rp">${pct.toFixed(1)}%</td>`;
+  });
+  body += '</tr></tbody>';
+  tableEl.innerHTML = `<table>${head}${body}</table>`;
 }
 
 // ===== RENDER ALL =====
