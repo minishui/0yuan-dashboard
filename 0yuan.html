@@ -766,7 +766,8 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <!-- 模块2：渠道 × 每日进量（含年级比例，透视表） -->
     <div class="section-title" style="margin-top:28px;" data-page-node-id="cg2TitleDaily">渠道 × 每日进量（含年级比例）</div>
     <div class="cg-note" data-page-node-id="cg2NoteDaily">
-      透视表：<b>渠道为行、购课日期为列</b>，单元格 = 该渠道当日进量（在班人次）；单元格下方按 L1~L5 列出年级占比，格式 <code>L1 x%；L2 y%；…</code>（分号分隔）。
+      透视表：<b>渠道为行、购课日期为列</b>，单元格 = 该渠道当日进量（在班人次）；单元格下方年级比例格式 <code>L1-L5：3:2:2:3:1</code>（即 L1~L5 各自的进量计数，冒号分隔）。
+      渠道列已冻结（横向滚动时固定），渠道名后括号标注商务名（如 昊旗科技（徐冲））。
       右侧「合计」为该渠道全期进量，底部「合计」行为各日期进量汇总。随上方筛选器（期次 / 渠道 / 年级 / 城市 等）实时联动——年级筛选开启时，年级比例仅含所选年级。
       日期较多时表格可横向滚动。
     </div>
@@ -5003,11 +5004,12 @@ function renderChannelGradeDaily(records) {
       if (tot === 0) {
         cells += '<td class="cg-zero">—</td>';
       } else {
-        const gp = GRADES.map(g => `${GLAB[g]} ${((m[g] || 0) / tot * 100).toFixed(0)}%`).join('；');
+        const gp = 'L1-L5：' + GRADES.map(g => (m[g] || 0)).join(':');
         cells += `<td><div class="cg-dv">${fmtInt(tot)}</div><div class="cg-gp">${gp}</div></td>`;
       }
     });
-    body += `<tr><th class="cg-rowh">${esc(ch)}</th>${cells}<td class="cg-tot">${fmtInt(rowTot)}</td></tr>`;
+    const bd = BD_MAP[ch] || '其他';
+    body += `<tr><th class="cg-rowh">${esc(ch)}（${esc(bd)}）</th>${cells}<td class="cg-tot">${fmtInt(rowTot)}</td></tr>`;
   });
   body += '</tbody>';
 
