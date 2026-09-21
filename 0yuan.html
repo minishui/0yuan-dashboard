@@ -908,6 +908,10 @@ const CHANNEL_TYPE = {
   '青松': '捐赠进校', '学海': '捐赠进校', '简单教育': '捐赠进校', '千机教育': '捐赠进校',
   '中添教育': '捐赠进校', '蓝海': '捐赠进校', '中投基金': '捐赠进校',
   '华南活动': '活动进校', '九州云享': '进校社群', '梦优': '进校社群', '掌通': '进校APP',
+  // 2026-09-21 水水口径补充
+  '季翀网络': '进校社群',
+  '亚太信息': '活动进校', '江和教育': '活动进校', '翰钧': '活动进校', '亿弘': '活动进校',
+  '致经典': '活动进校', '进校平台': '活动进校', '进校内部': '活动进校', '进校活动': '活动进校',
   '和谐号': '单校直推', '宸陌信息': '单校直推'
 };
 // 渠道类型按"渠道+期次"覆盖（如中碳从夏9期起改为捐赠进校）
@@ -935,23 +939,19 @@ function getConvLink(period) {
 // ===== 派生虚拟字段：渠道类型 & 商务BD =====
 // 定义为命名函数，页面加载和导入数据后均需调用
 function deriveVirtualFields() {
-  var _CHANNEL_TYPE = {
-    '中碳': '活动进校', '昊旗科技': '活动进校', '书妈妈': '活动进校', '兰芷阁': '活动进校',
-    '研吧教育': '活动进校', '兴学教育': '活动进校', '育见锦途': '活动进校',
-    '青松': '捐赠进校', '学海': '捐赠进校', '简单教育': '捐赠进校', '千机教育': '捐赠进校',
-    '华南活动': '活动进校', '九州云享': '进校社群', '梦优': '进校社群', '掌通': '进校APP',
-    '中添教育': '捐赠进校', '蓝海': '捐赠进校', '中投基金': '捐赠进校',
-    '和谐号': '单校直推', '宸陌信息': '单校直推'
-  };
+  // 渠道类型统一由 getChannelType() + 顶部 CHANNEL_TYPE 提供（此处原有第二份副本已删除，避免双份遗漏）
+  // ⚠️ 必须与下方全局 BD_MAP（约 5150 行处）完全一致：此处是提前副本，供页面加载时派生「商务BD」字段
   var _BD_MAP = {
     '昊旗科技': '徐冲', '和谐号': '杨文丽', '津艺树人': '杨文丽', '梅森信息': '徐冲',
     '千机教育': '徐冲', '青松': '杨文丽', '书妈妈': '徐冲', '学海': '刘家欢',
-    '育见锦途': '杨文丽', '中碳': '杨文丽', '中添教育': '徐冲', '简单教育': '刘家欢',
+    '育见锦途': '杨文丽', '中碳': '杨文丽', '中碳汇智': '杨文丽', '中添教育': '徐冲', '简单教育': '刘家欢',
     '兰芷阁': '徐冲', '蓝海': '徐冲', '中投基金': '徐冲', '宸陌信息': '徐冲',
     '华南活动': '徐冲', '研吧教育': '徐冲', '兴学教育': '杨文丽', '九州云享': '徐冲',
     '飞梭科技': '杨文丽', '研而学': '杨文丽', '智能科技': '杨文丽', '南柒': '杨文丽',
     '湖南润泽': '徐冲', '善朝': '杨文丽', '掌通': '刘家欢', '鲁信': '徐冲', '玄览': '徐冲',
-    '进校内部': '其他', '进校活动': '其他', '准效营销': '其他', '梦优': '其他',
+    '季翀网络': '王雨', '亚太信息': '杨文丽', '江和教育': '徐冲', '翰钧': '徐冲', '亿弘': '刘家欢',
+    '致经典': '进校活动', '进校平台': '进校活动', '进校内部': '进校活动', '进校活动': '进校活动',
+    '准效营销': '储志来', '梦优': '储志来',
     '南昌向上君教育科技有限公司': '杨国威'
   };
   var typeSet = new Set();
@@ -970,7 +970,7 @@ function deriveVirtualFields() {
   // 生成筛选选项列表（按固定顺序）
   var typeOrder = ['活动进校', '捐赠进校', '单校直推', '进校APP', '进校社群', '其他'];
   DATA.filters['渠道类型'] = typeOrder.filter(function(t) { return typeSet.has(t); });
-  var bdOrder = ['徐冲', '杨文丽', '刘家欢', '杨国威', '其他'];
+  var bdOrder = ['徐冲', '杨文丽', '刘家欢', '储志来', '王雨', '进校活动', '杨国威', '其他'];
   DATA.filters['商务BD'] = bdOrder.filter(function(b) { return bdSet.has(b); });
   var linkOrder = ['0-153', '0-299'];
   DATA.filters['转化链路'] = linkOrder.filter(function(l) { return linkSet.has(l); });
@@ -5410,13 +5410,20 @@ function renderBdMonthly(records) {
   // Get targets for detected month
   var monthTarget = getMonthlyTarget(month);
   var MONTHLY_TARGET = monthTarget.total;
-  var BD_TARGET = monthTarget.bd;
+  // 复制一份，避免动态补齐时污染 MONTHLY_TARGET_MAP 配置
+  var BD_TARGET = Object.assign({}, monthTarget.bd);
   // Ensure default targets for known BDs
   if (!BD_TARGET['刘家欢']) BD_TARGET['刘家欢'] = 0;
   if (!BD_TARGET['杨文丽']) BD_TARGET['杨文丽'] = 0;
   if (!BD_TARGET['徐冲']) BD_TARGET['徐冲'] = 0;
   BD_TARGET['杨国威'] = 0;
   BD_TARGET['其他'] = 0;
+  // ⚠️ 动态补齐：BD_MAP 里出现、但月度目标未配置的 BD（如 王雨 / 储志来 / 进校活动）目标置 0。
+  // 否则这些 BD 名下的渠道会因 bdDetailMap/ bdData 无对应 key 而被兜底归入「其他」（2026-09-21 修复）
+  Object.keys(BD_MAP).forEach(function(ch) {
+    var _bd = BD_MAP[ch];
+    if (_bd && !Object.prototype.hasOwnProperty.call(BD_TARGET, _bd)) BD_TARGET[_bd] = 0;
+  });
 
   // Aggregate by channel (for channel detail)
   const chData = {};
