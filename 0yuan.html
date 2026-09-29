@@ -404,6 +404,7 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <button class="tab-btn" onclick="switchTab('bd')" data-page-node-id="QRbm8LDuQKVKjks7xD3L1C">商务月度</button>
     <button class="tab-btn" onclick="switchTab('trend')" data-page-node-id="4DYVOl9fl0g5msRBMTkRxF">趋势总览</button>
     <button class="tab-btn" onclick="switchTab('channel')" data-page-node-id="iAmoBRF6c4YMxFxGu04ItJ">渠道对比</button>
+    <button class="tab-btn" onclick="switchTab('chvol')" data-page-node-id="cvTabBtnChVol">渠道进量</button>
     <button class="tab-btn" onclick="switchTab('grade')" data-page-node-id="DZ9Ogtk8mmtjmfaQfspc8Z">年级分析</button>
     <button class="tab-btn" onclick="switchTab('chgrade')" data-page-node-id="cgTabBtnChGrade">渠道年级</button>
     <button class="tab-btn" onclick="switchTab('city')" data-page-node-id="6UbAnO9KI2K1W537B1ek9Z">城市分析</button>
@@ -860,6 +861,39 @@ table .total-row td { font-weight: 700; color: var(--primary-dark); }
     <div class="kpi-row" id="kpiRowSettlement" style="margin-bottom:16px;" data-page-node-id="aQJ7xtOPFdVQqCWhqLHufN"></div>
     <div class="section-title" data-page-node-id="oqNvIRvfsMgFj9JsHBwW3b">各渠道「二线及以上」有效单量占比</div>
     <div class="table-wrap" id="tableSettlement" data-page-node-id="69CWgoaKDk3DCoOtkie4c4"></div>
+  </div>
+
+  <div class="tab-content" id="tabChannelVol" data-page-node-id="cvPanelChVol">
+    <div class="section-title" data-page-node-id="cvTitleMain">渠道进量分析（进量口径：在班人次）</div>
+    <div style="background:var(--primary-light);padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);margin-bottom:14px;" data-page-node-id="cvPanelNote">
+      本 Tab 响应筛选器：<b>期次 / 渠道 / 年级 / 学科 / 城市 / 城市等级 / 商务BD / 月份</b>；进量 = 在班人次（与 BD 完标率、每日推送同口径）。最新期次仍在累积时，环比口径自动切换为「近 7 天 vs 前 7 天」。
+    </div>
+    <div class="kpi-row" id="kpiRowChannelVol" style="margin-bottom:16px;" data-page-node-id="cvKpiRow"></div>
+
+    <div class="section-title" id="cvRankTitle" data-page-node-id="cvRankTitle">① 渠道量级排行</div>
+    <div class="chart-box" id="chartCvRank" style="height:380px;" data-page-node-id="cvRankChart"></div>
+    <div class="table-wrap" id="tableCvRank" style="margin-top:12px;" data-page-node-id="cvRankTable"></div>
+
+    <div class="section-title" id="cvStructTitle" data-page-node-id="cvStructTitle">② 渠道结构变化</div>
+    <div class="table-wrap" id="tableCvStruct" data-page-node-id="cvStructTable"></div>
+
+    <div class="section-title" id="cvTierTitle" data-page-node-id="cvTierTitle">③ 城市线结构</div>
+    <div class="chart-box" id="chartCvTier" style="height:400px;" data-page-node-id="cvTierChart"></div>
+    <div class="table-wrap" id="tableCvTier" style="margin-top:12px;" data-page-node-id="cvTierTable"></div>
+
+    <div class="section-title" id="cvCityTitle" data-page-node-id="cvCityTitle">④ 城市变化</div>
+    <div class="table-wrap" id="tableCvCity" data-page-node-id="cvCityTable"></div>
+
+    <div class="section-title" id="cvWeekTitle" data-page-node-id="cvWeekTitle">⑤ 近期趋势</div>
+    <div class="chart-box" id="chartCvWeek" style="height:400px;" data-page-node-id="cvWeekChart"></div>
+    <div class="table-wrap" id="tableCvMomentum" style="margin-top:12px;" data-page-node-id="cvMomentumTable"></div>
+
+    <div class="section-title" id="cvRateTitle" data-page-node-id="cvRateTitle">⑥ 进量 × 转率</div>
+    <div class="chart-box" id="chartCvScatter" style="height:440px;" data-page-node-id="cvRateChart"></div>
+    <div class="table-wrap" id="tableCvRate" style="margin-top:12px;" data-page-node-id="cvRateTable"></div>
+
+    <div class="section-title" id="cvInsightTitle" data-page-node-id="cvInsightTitle">⑦ 分析结论</div>
+    <div class="table-wrap" id="cvInsights" data-page-node-id="cvInsights"></div>
   </div>
 </div>
 
@@ -5049,9 +5083,649 @@ function renderChannelGradeDaily(records) {
   tableEl.innerHTML = style + `<table>${head}${body}</table>`;
 }
 
+// ===== 渠道进量分析 Tab =====
+// 进量口径 = 在班人次（与 BD 完标率 / 每日推送一致）
+// 本期为「进行中」期次时，对比口径自动切换为「上期同期等长窗口」
+var CV_TIER_ORDER = ['一线', '新一线', '二线', '三线', '四线', '五线', '其他'];
+var CV_TIER_T2PLUS = ['一线', '新一线', '二线'];
+var CV_TIER_COLORS = { '一线': '#e07070', '新一线': '#e6a817', '二线': '#6b8cf0', '三线': '#5cbf8a', '四线': '#8e6cf0', '五线': '#8498a8', '其他': '#cbd5e1' };
+var CV_WEEK_N = 8;      // 周趋势展示最近 8 周
+var CV_LINE_N = 6;      // 周趋势折线的渠道数
+var CV_RANK_N = 15;     // 排行图展示渠道数
+
+function cvEsc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function cvNormTier(raw) {
+  var t = String(raw === undefined || raw === null ? '' : raw).replace('城市', '');
+  return CV_TIER_ORDER.indexOf(t) >= 0 ? t : '其他';
+}
+function cvNil(n) { return n === undefined || n === null || isNaN(n); }
+function cvPct(v) { return cvNil(v) ? '—' : (v * 100).toFixed(1) + '%'; }
+function cvDelta(cur, prev) {
+  if (cvNil(prev) || prev === 0) return null;
+  return (cur - prev) / prev;
+}
+// 周三为一周起点（与百川简报口径一致）
+function cvWeekStart(dstr) {
+  if (!dstr) return null;
+  var d = new Date(String(dstr) + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  var dow = d.getDay();                    // 0=周日 … 3=周三
+  d.setDate(d.getDate() - ((dow - 3 + 7) % 7));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function cvPad2(n) { return (n < 10 ? '0' : '') + n; }
+function cvFmtDate(d) { return d.getFullYear() + '-' + cvPad2(d.getMonth() + 1) + '-' + cvPad2(d.getDate()); }
+function cvFmtMD(d) { return cvPad2(d.getMonth() + 1) + '.' + cvPad2(d.getDate()); }
+function cvWeekLabel(start) {
+  var end = new Date(start.getTime());
+  end.setDate(end.getDate() + 6);
+  return cvFmtMD(start) + '~' + cvFmtMD(end);
+}
+function cvAddDays(dstr, n) {
+  var d = new Date(String(dstr) + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + n);
+  return cvFmtDate(d);
+}
+function cvDaysBetween(a, b) {
+  var d1 = new Date(String(a) + 'T00:00:00'), d2 = new Date(String(b) + 'T00:00:00');
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+  return Math.round((d2 - d1) / 86400000);
+}
+// 期次目标（沿用 CHANNEL_PERIOD_TARGET，缺则回退最近有目标的期次）
+function cvTargets(period) {
+  if (CHANNEL_PERIOD_TARGET[period]) return { map: CHANNEL_PERIOD_TARGET[period], from: period };
+  for (var i = PERIOD_ORDER.indexOf(period) - 1; i >= 0; i--) {
+    if (CHANNEL_PERIOD_TARGET[PERIOD_ORDER[i]]) return { map: CHANNEL_PERIOD_TARGET[PERIOD_ORDER[i]], from: PERIOD_ORDER[i] };
+  }
+  return { map: {}, from: null };
+}
+function cvChanTarget(t) {
+  if (!t) return 0;
+  return (t['创新思维'] || 0) + (t['阅读'] || 0);
+}
+function cvPearson(xs, ys) {
+  var n = xs.length;
+  if (n < 3) return null;
+  var sx = 0, sy = 0, i;
+  for (i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; }
+  var mx = sx / n, my = sy / n, a = 0, b = 0, c = 0;
+  for (i = 0; i < n; i++) {
+    var dx = xs[i] - mx, dy = ys[i] - my;
+    a += dx * dy; b += dx * dx; c += dy * dy;
+  }
+  if (b === 0 || c === 0) return null;
+  return a / Math.sqrt(b * c);
+}
+// 按日窗口求和（dailyMap: {date: value}，含 cutoff）
+function cvSumUntil(dailyMap, cutoff) {
+  if (!dailyMap) return 0;
+  var s = 0;
+  Object.keys(dailyMap).forEach(function (d) { if (!cutoff || d <= cutoff) s += dailyMap[d]; });
+  return s;
+}
+function cvPeriodSpan(dailyMap) {
+  var days = Object.keys(dailyMap || {}).sort();
+  if (!days.length) return null;
+  var n = cvDaysBetween(days[0], days[days.length - 1]);
+  return { first: days[0], last: days[days.length - 1], elapsed: (n === null ? 1 : n + 1) };
+}
+
+function renderChannelVolume(records) {
+  if (!records) records = getFilteredDetail();
+  var _el = function (id) { return document.getElementById(id); };
+  var CV_TABLES = ['tableCvRank', 'tableCvStruct', 'tableCvTier', 'tableCvCity', 'tableCvMomentum', 'tableCvRate', 'cvInsights'];
+  var emptyHtml = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 筛选结果为空，请调整筛选条件</div>';
+  if (!records || records.length === 0) {
+    if (_el('kpiRowChannelVol')) _el('kpiRowChannelVol').innerHTML = '';
+    CV_TABLES.forEach(function (id) { if (_el(id)) _el(id).innerHTML = emptyHtml; });
+    return;
+  }
+
+  // ===== 单次遍历聚合（含日粒度，供「上期同期」口径用）=====
+  var chAgg = {}, tierAgg = {}, cityAgg = {}, weekAgg = {}, allDaily = {};
+  function bump(map, key, val) { map[key] = (map[key] || 0) + val; }
+  records.forEach(function (r) {
+    var ch = r['渠道'] || '未归属';
+    var p = r['期次'] || '';
+    var wd = r['购课日期'] || '';
+    var leads = r['在班人次'] || 0;
+    var conv = r['转低人次'] || 0;
+    var tier = cvNormTier(r['城市等级']);
+    var city = r['城市'] || '';
+
+    var a = chAgg[ch];
+    if (!a) a = chAgg[ch] = { ch: ch, 在班: 0, 转低: 0, byPeriod: {}, tier: {} };
+    a.在班 += leads; a.转低 += conv;
+    if (!a.byPeriod[p]) a.byPeriod[p] = { 在班: 0, 转低: 0 };
+    a.byPeriod[p].在班 += leads; a.byPeriod[p].转低 += conv;
+
+    if (!a.tier[tier]) a.tier[tier] = { 在班: 0, byPeriod: {} };
+    a.tier[tier].在班 += leads;
+    if (!a.tier[tier].byPeriod[p]) a.tier[tier].byPeriod[p] = 0;
+    a.tier[tier].byPeriod[p] += leads;
+
+    var t = tierAgg[tier];
+    if (!t) t = tierAgg[tier] = { tier: tier, 在班: 0, 转低: 0, byPeriod: {} };
+    t.在班 += leads; t.转低 += conv;
+    if (!t.byPeriod[p]) t.byPeriod[p] = { 在班: 0, 转低: 0 };
+    t.byPeriod[p].在班 += leads; t.byPeriod[p].转低 += conv;
+
+    if (city) {
+      var c = cityAgg[city];
+      if (!c) c = cityAgg[city] = { city: city, tier: tier, 在班: 0, 转低: 0, byPeriod: {} };
+      c.在班 += leads; c.转低 += conv;
+      if (!c.byPeriod[p]) c.byPeriod[p] = { 在班: 0, 转低: 0 };
+      c.byPeriod[p].在班 += leads; c.byPeriod[p].转低 += conv;
+    }
+
+    if (wd) {
+      bump(allDaily, wd, leads);
+      var ws = cvWeekStart(wd);
+      if (ws) {
+        var wk = cvFmtDate(ws);
+        var w = weekAgg[wk];
+        if (!w) w = weekAgg[wk] = { wk: wk, start: ws, 在班: 0, 转低: 0, byChannel: {} };
+        w.在班 += leads; w.转低 += conv;
+        w.byChannel[ch] = (w.byChannel[ch] || 0) + leads;
+      }
+    }
+  });
+
+  // ===== 期次解析（本期 / 上期）+ 对比口径 =====
+  var selP = (currentFilters['期次'] || []).filter(Boolean);
+  var present = [], seenP = {};
+  records.forEach(function (r) { var p = r['期次']; if (p && !seenP[p]) { seenP[p] = 1; present.push(p); } });
+  present.sort(function (x, y) { return PERIOD_ORDER.indexOf(x) - PERIOD_ORDER.indexOf(y); });
+  var cur = selP.length === 1 ? selP[0] : (present.length ? present[present.length - 1] : PERIOD_ORDER[PERIOD_ORDER.length - 1]);
+  var ci = PERIOD_ORDER.indexOf(cur);
+  var prev = ci > 0 ? PERIOD_ORDER[ci - 1] : null;
+  var tgt = cvTargets(cur);
+
+  // 最新期次仍在累积 → 整期环比不可比，改用「近 7 天 vs 前 7 天」滚动口径
+  var isLatest = cur === PERIOD_ORDER[PERIOD_ORDER.length - 1];
+  var dayKeys = Object.keys(allDaily).sort();
+  var frontier = dayKeys.length ? dayKeys[dayKeys.length - 1] : null;
+  function cvRoll(endDate, days) {
+    if (!endDate) return 0;
+    var start = cvAddDays(endDate, -(days - 1)), acc = 0;
+    dayKeys.forEach(function (d) { if (d >= start && d <= endDate) acc += allDaily[d]; });
+    return acc;
+  }
+  var r7 = cvRoll(frontier, 7);
+  var p7 = cvRoll(cvAddDays(frontier, -7), 7);
+  var wd7 = cvDelta(r7, p7);
+  var fmd = frontier ? frontier.slice(5).replace('-', '.') : '—';
+
+  function chCur(a) { return (a.byPeriod[cur] ? a.byPeriod[cur].在班 : 0) || 0; }
+  function chConvCur(a) { return (a.byPeriod[cur] ? a.byPeriod[cur].转低 : 0) || 0; }
+  function chPrev(a) { return (prev && a.byPeriod[prev] ? a.byPeriod[prev].在班 : 0) || 0; }
+  function tierCurV(tier) { var t = tierAgg[tier]; return t && t.byPeriod[cur] ? t.byPeriod[cur].在班 : 0; }
+  function tierPrevV(tier) { var t = tierAgg[tier]; return (t && prev && t.byPeriod[prev]) ? t.byPeriod[prev].在班 : 0; }
+
+  var curTotal = 0, prevTotal = 0;
+  Object.keys(chAgg).forEach(function (k) { curTotal += chCur(chAgg[k]); prevTotal += chPrev(chAgg[k]); });
+  var curT2 = CV_TIER_T2PLUS.reduce(function (s, t) { return s + tierCurV(t); }, 0);
+  var prevT2 = CV_TIER_T2PLUS.reduce(function (s, t) { return s + tierPrevV(t); }, 0);
+  var prevTierSum = CV_TIER_ORDER.reduce(function (s, t) { return s + tierPrevV(t); }, 0);
+  var cmpLabel = !prev ? '无上期' : (isLatest ? '近 7 天环比' : '环比上期');
+  var cmpNote = !prev ? '' : (isLatest
+    ? '（' + cur + ' 仍在累积，数据截至 ' + fmd + '；表内「上期进量」为 ' + prev + ' 整期，仅供量级参考）'
+    : '（对比 ' + prev + ' 全期）');
+
+  // 城市集合（本期 / 上期同口径窗口）
+  var cityCur = [], cityPrev = [], cityCurSet = {}, cityPrevSet = {};
+  Object.keys(cityAgg).forEach(function (k) {
+    var c = cityAgg[k];
+    var v = c.byPeriod[cur] ? c.byPeriod[cur].在班 : 0;
+    var pv = (prev && c.byPeriod[prev]) ? c.byPeriod[prev].在班 : 0;
+    if (v > 0) { cityCur.push({ city: c.city, tier: c.tier, cur: v, prev: pv, conv: (c.byPeriod[cur].转低 || 0) }); cityCurSet[c.city] = 1; }
+    if (pv > 0) { cityPrev.push({ city: c.city, tier: c.tier, cur: v, prev: pv }); cityPrevSet[c.city] = 1; }
+  });
+  cityCur.sort(function (a, b) { return b.cur - a.cur; });
+  var cityNew = cityCur.filter(function (c) { return !cityPrevSet[c.city]; }).map(function (c) { return c.city; });
+  var cityGone = cityPrev.filter(function (c) { return !cityCurSet[c.city]; }).map(function (c) { return c.city; });
+
+  // 周序列
+  var weekKeys = Object.keys(weekAgg).sort();
+  var weeks = weekKeys.slice(-CV_WEEK_N).map(function (k) { return weekAgg[k]; });
+  var chWeekTot = {};
+  weeks.forEach(function (w) {
+    Object.keys(w.byChannel).forEach(function (ch) { chWeekTot[ch] = (chWeekTot[ch] || 0) + w.byChannel[ch]; });
+  });
+  var topWeekChannels = Object.keys(chWeekTot).sort(function (a, b) { return chWeekTot[b] - chWeekTot[a]; }).slice(0, CV_LINE_N);
+
+  // ===== ① KPI =====
+  var rankList = Object.keys(chAgg).map(function (k) { return chAgg[k]; })
+    .filter(function (a) { return chCur(a) > 0; })
+    .sort(function (a, b) { return chCur(b) - chCur(a); });
+  var activeN = rankList.length;
+  var crTop3 = rankList.slice(0, 3).reduce(function (s, a) { return s + chCur(a); }, 0);
+  var curConv = rankList.reduce(function (s, a) { return s + chConvCur(a); }, 0);
+  var overallRate = safeDiv(curConv, curTotal);
+  var momTotal = cvDelta(curTotal, prevTotal);
+  var cityTop5Sum = cityCur.slice(0, 5).reduce(function (s, c) { return s + c.cur; }, 0);
+
+  var kpiHtml = ''
+    + '<div class="kpi-card"><div class="kpi-label">' + cvEsc(cur) + ' 进量（在班人次）</div><div class="kpi-value">' + fmtInt(curTotal) + '</div><div class="kpi-sub">' + (prev ? cvEsc(prev) + ' 整期：' + fmtInt(prevTotal) + '｜数据截至 ' + fmd : '无上期可比') + '</div></div>'
+    + (isLatest
+      ? '<div class="kpi-card"><div class="kpi-label">近 7 天进量</div><div class="kpi-value">' + fmtInt(r7) + '</div><div class="kpi-sub">环比前 7 天 <b style="color:' + (wd7 === null ? '#64748b' : (wd7 >= 0 ? '#dc2626' : '#16a34a')) + '">' + (wd7 === null ? '—' : (wd7 >= 0 ? '+' : '') + cvPct(wd7)) + '</b></div></div>'
+      : '<div class="kpi-card"><div class="kpi-label">' + cmpLabel + '</div><div class="kpi-value" style="color:' + (momTotal === null ? '#64748b' : (momTotal >= 0 ? '#dc2626' : '#16a34a')) + '">' + (momTotal === null ? '—' : (momTotal >= 0 ? '+' : '') + cvPct(momTotal)) + '</div><div class="kpi-sub">' + (prev ? fmtInt(prevTotal) + ' → ' + fmtInt(curTotal) : '—') + '</div></div>')
+    + '<div class="kpi-card"><div class="kpi-label">活跃渠道数</div><div class="kpi-value">' + fmtInt(activeN) + '</div><div class="kpi-sub">单渠道均值 ' + fmtInt(activeN ? Math.round(curTotal / activeN) : 0) + '</div></div>'
+    + '<div class="kpi-card"><div class="kpi-label">进量集中度 CR3</div><div class="kpi-value">' + cvPct(safeDiv(crTop3, curTotal)) + '</div><div class="kpi-sub">TOP3 合计 ' + fmtInt(crTop3) + '</div></div>'
+    + '<div class="kpi-card"><div class="kpi-label">有进量城市数</div><div class="kpi-value">' + fmtInt(cityCur.length) + '</div><div class="kpi-sub">上期 ' + fmtInt(cityPrev.length) + '｜TOP5 集中度 ' + cvPct(safeDiv(cityTop5Sum, curTotal)) + '</div></div>'
+    + '<div class="kpi-card"><div class="kpi-label">二线及以上占比</div><div class="kpi-value">' + cvPct(safeDiv(curT2, curTotal)) + '</div><div class="kpi-sub">上期 ' + cvPct(safeDiv(prevT2, prevTierSum)) + '｜转率 ' + cvPct(overallRate) + '</div></div>';
+  if (_el('kpiRowChannelVol')) _el('kpiRowChannelVol').innerHTML = kpiHtml;
+
+  var sampleWarn = curTotal < 200 ? '　⚠️ 本期样本较小（进量 ' + fmtInt(curTotal) + '），比率类结论仅供参考' : '';
+  if (_el('cvRankTitle')) _el('cvRankTitle').innerHTML = '① 渠道量级排行（' + cvEsc(cur) + '，进量 = 在班人次）' + sampleWarn;
+  if (_el('cvStructTitle')) _el('cvStructTitle').innerHTML = '② 渠道结构变化（' + cvEsc(cur) + ' ' + cmpLabel + (prev ? ' ' + cvEsc(prev) : '') + '）';
+  if (_el('cvTierTitle')) _el('cvTierTitle').innerHTML = '③ 城市线结构（' + cvEsc(cur) + '）';
+  if (_el('cvCityTitle')) _el('cvCityTitle').innerHTML = '④ 城市变化（' + cvEsc(cur) + ' vs ' + (prev ? cvEsc(prev) : '无上期') + '）';
+  if (_el('cvWeekTitle')) _el('cvWeekTitle').innerHTML = '⑤ 近期趋势（最近 ' + weeks.length + ' 个自然周，周三起算）';
+  if (_el('cvRateTitle')) _el('cvRateTitle').innerHTML = '⑥ 进量 × 转率（' + cvEsc(cur) + '）';
+
+  // ===== ① 排行图 =====
+  var rankChart = getOrCreateChart('chartCvRank');
+  if (rankChart) {
+    var rk = rankList.slice(0, CV_RANK_N).slice().reverse();
+    var prevSeriesName = prev ? prev : '—';
+    rankChart.setOption({
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 } },
+      legend: { data: [cur, prevSeriesName], bottom: 4, textStyle: { fontSize: 12 }, itemWidth: 12, itemHeight: 8 },
+      grid: { left: 110, right: 50, top: 20, bottom: 50 },
+      xAxis: { type: 'value', axisLabel: { fontSize: 11, color: '#334155' }, splitLine: { lineStyle: { color: '#eef2f7' } } },
+      yAxis: { type: 'category', data: rk.map(function (a) { return a.ch; }), axisLabel: { fontSize: 12, fontWeight: 600, color: '#1e293b' } },
+      series: [
+        { name: cur, type: 'bar', data: rk.map(function (a) { return chCur(a); }), itemStyle: { color: '#4f6ef7' }, label: { show: true, position: 'right', fontSize: 11, color: '#1e293b', formatter: function (p) { return fmtInt(p.value); } } },
+        { name: prevSeriesName, type: 'bar', data: rk.map(function (a) { return chPrev(a); }), itemStyle: { color: '#c7d2fe' } }
+      ]
+    });
+  }
+
+  // ===== ① 排行表 =====
+  (function () {
+    var el = _el('tableCvRank');
+    if (!el) return;
+    var rows = rankList.slice();
+    var maxCell = Math.max.apply(null, rows.map(function (a) { return chCur(a); }).concat([1]));
+    var sum = { 在班: 0, 转低: 0, prev: 0, tgt: 0 };
+    var body = rows.map(function (a) {
+      var v = chCur(a);
+      var pv = chPrev(a);
+      var d = cvDelta(v, pv);
+      var ct = getChannelType(a.ch, cur);
+      var bd = BD_MAP[a.ch] || '其他';
+      var t = cvChanTarget(tgt.map[a.ch]);
+      sum.在班 += v; sum.转低 += chConvCur(a); sum.prev += pv; sum.tgt += t;
+      var dColor = d === null ? '#94a3b8' : (d >= 0 ? '#dc2626' : '#16a34a');
+      return '<tr>'
+        + '<th class="cv-rowh">' + cvEsc(a.ch) + '</th>'
+        + '<td>' + cvEsc(ct) + '</td>'
+        + '<td>' + cvEsc(bd) + '</td>'
+        + '<td class="cv-num cv-bold"><div class="cv-bar" style="width:' + (v / maxCell * 100) + '%"></div><span>' + fmtInt(v) + '</span></td>'
+        + '<td class="cv-num">' + cvPct(safeDiv(v, curTotal)) + '</td>'
+        + '<td class="cv-num">' + (prev ? fmtInt(pv) : '—') + '</td>'
+        + '<td class="cv-num" style="color:' + dColor + ';font-weight:700;">' + (d === null ? '—' : (d >= 0 ? '+' : '') + cvPct(d)) + '</td>'
+        + '<td class="cv-num">' + (t ? fmtInt(t) : '—') + '</td>'
+        + '<td class="cv-num">' + (t ? cvPct(safeDiv(v, t)) : '—') + '</td>'
+        + '<td class="cv-num">' + cvPct(safeDiv(chConvCur(a), v)) + '</td>'
+        + '</tr>';
+    }).join('');
+    var sumColor = (momTotal === null ? '#94a3b8' : (momTotal >= 0 ? '#dc2626' : '#16a34a'));
+    var sumRow = '<tr class="cv-sum"><th class="cv-rowh">合计（' + rows.length + ' 个渠道）</th><td>—</td><td>—</td>'
+      + '<td class="cv-num">' + fmtInt(sum.在班) + '</td><td class="cv-num">100.0%</td><td class="cv-num">' + (prev ? fmtInt(sum.prev) : '—') + '</td>'
+      + '<td class="cv-num" style="color:' + sumColor + ';">' + (isLatest ? '<span style="color:#94a3b8;font-weight:400;">见近7天</span>' : (momTotal === null ? '—' : (momTotal >= 0 ? '+' : '') + cvPct(momTotal))) + '</td>'
+      + '<td class="cv-num">' + (sum.tgt ? fmtInt(sum.tgt) : '—') + '</td>'
+      + '<td class="cv-num">' + (sum.tgt ? cvPct(safeDiv(sum.在班, sum.tgt)) : '—') + '</td>'
+      + '<td class="cv-num">' + cvPct(safeDiv(sum.转低, sum.在班)) + '</td></tr>';
+    el.innerHTML = cvTableStyle('tableCvRank')
+      + '<table><thead><tr><th>渠道</th><th>渠道类型</th><th>BD</th><th>进量</th><th>占比</th><th>上期进量' + (isLatest ? '<br><span style="font-weight:400;font-size:10.5px;opacity:.85;">(整期，仅量级参考)</span>' : '') + '</th><th>' + cmpLabel + '</th><th>目标</th><th>完标率</th><th>转率</th></tr></thead>'
+      + '<tbody>' + body + sumRow + '</tbody></table>'
+      + '<div class="cv-note">＊目标列' + (tgt.from ? '取自「' + cvEsc(tgt.from) + '」期次目标' : '源表未配置') + (tgt.from && tgt.from !== cur ? '（' + cvEsc(cur) + ' 无专属目标，沿用最近有目标的期次）' : '')
+      + '<br>＊对比口径' + cvEsc(cmpNote) + '</div>';
+  })();
+
+  // ===== ② 渠道结构变化 =====
+  (function () {
+    var el = _el('tableCvStruct');
+    if (!el) return;
+    if (!prev) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">当前筛选无可比上期（需包含上一期次数据）</div>'; return; }
+    var allCh = Object.keys(chAgg);
+    var added = allCh.filter(function (k) { return chCur(chAgg[k]) > 0 && chPrev(chAgg[k]) === 0; })
+      .sort(function (a, b) { return chCur(chAgg[b]) - chCur(chAgg[a]); });
+    var dropped = allCh.filter(function (k) { return chPrev(chAgg[k]) > 0 && chCur(chAgg[k]) === 0; })
+      .sort(function (a, b) { return chPrev(chAgg[b]) - chPrev(chAgg[a]); });
+    var changed = allCh.map(function (k) {
+      var c = chCur(chAgg[k]), p = chPrev(chAgg[k]);
+      return { ch: k, cur: c, prev: p, diff: c - p, rate: cvDelta(c, p) };
+    }).filter(function (x) { return x.prev > 0 && x.cur > 0; }).sort(function (a, b) { return b.diff - a.diff; });
+    var up = changed.slice(0, 5);
+    var down = changed.slice().reverse().slice(0, 5).filter(function (x) { return x.diff < 0; });
+    function rowsOf(title, list, color) {
+      if (!list.length) return '<tr><th class="cv-rowh">' + title + '</th><td colspan="5" style="color:#94a3b8;">无</td></tr>';
+      return list.map(function (x, i) {
+        var ch, c, p, d;
+        if (typeof x === 'string') { ch = x; c = chCur(chAgg[x]); p = chPrev(chAgg[x]); d = cvDelta(c, p); }
+        else { ch = x.ch; c = x.cur; p = x.prev; d = x.rate; }
+        return '<tr>' + (i === 0 ? '<th class="cv-rowh" rowspan="' + list.length + '">' + title + '</th>' : '')
+          + '<td class="cv-ch">' + cvEsc(ch) + '</td><td class="cv-num">' + (c ? fmtInt(c) : '—') + '</td><td class="cv-num">' + (p ? fmtInt(p) : '—') + '</td>'
+          + '<td class="cv-num" style="color:' + color + ';font-weight:700;">' + ((c - p) > 0 ? '+' : '') + fmtInt(c - p) + '</td>'
+          + '<td class="cv-num" style="color:' + color + ';">' + (isLatest ? (p === 0 && c > 0 ? '新进' : (c > p ? '增' : (c < p ? '减' : '持平'))) : (d === null ? (c > 0 ? '新进' : '—') : (d >= 0 ? '+' : '') + cvPct(d))) + '</td></tr>';
+      }).join('');
+    }
+    el.innerHTML = cvTableStyle('tableCvStruct')
+      + '<table><thead><tr><th>类型</th><th>渠道</th><th>本期进量</th><th>上期进量</th><th>变化</th><th>' + (isLatest ? '说明' : cmpLabel) + '</th></tr></thead><tbody>'
+      + rowsOf('新增', added.slice(0, 5), '#dc2626')
+      + rowsOf('掉出', dropped.slice(0, 5), '#16a34a')
+      + rowsOf('增幅TOP', up, '#dc2626')
+      + rowsOf('降幅TOP', down, '#16a34a')
+      + '</tbody></table>'
+      + '<div class="cv-note">「新增 / 掉出」= 本期有量而上期无量 / 反之；增幅降幅仅统计两期均有量的渠道。' + (isLatest ? '<br>＊' + cvEsc(cur) + ' 仍在累积，上述「增 / 减」为与 ' + cvEsc(prev) + ' 整期的量级对比，方向可参考、幅度不可比。' : '') + '</div>';
+  })();
+
+  // ===== ③ 城市线结构 =====
+  var chsTop12 = rankList.slice(0, 12).map(function (a) { return a.ch; });
+  function tierOfChan(a, tier, period) {
+    if (!a.tier[tier]) return 0;
+    return a.tier[tier].byPeriod[period] || 0;
+  }
+  (function () {
+    var chart = getOrCreateChart('chartCvTier');
+    if (!chart) return;
+    chart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 } },
+      legend: { data: CV_TIER_ORDER, bottom: 4, textStyle: { fontSize: 11 }, itemWidth: 12, itemHeight: 8 },
+      grid: { left: 60, right: 30, top: 20, bottom: 60 },
+      xAxis: { type: 'category', data: chsTop12, axisLabel: { rotate: 35, fontSize: 11, color: '#1e293b', fontWeight: 600 } },
+      yAxis: { type: 'value', name: '在班人次', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { fontSize: 11, color: '#334155' }, splitLine: { lineStyle: { color: '#eef2f7' } } },
+      series: CV_TIER_ORDER.map(function (t) {
+        return {
+          name: t, type: 'bar', stack: 'tier', itemStyle: { color: CV_TIER_COLORS[t] }, emphasis: { focus: 'series' },
+          data: chsTop12.map(function (ch) { return (chAgg[ch].tier[t] && chAgg[ch].tier[t].byPeriod[cur]) || 0; })
+        };
+      })
+    });
+  })();
+  (function () {
+    var el = _el('tableCvTier');
+    if (!el) return;
+    var rows = rankList.slice();
+    var maxCell = Math.max.apply(null, rows.map(function (a) { return chCur(a); }).concat([1]));
+    var colTot = {}, grand = 0, t2Tot = 0, prevGrand = 0, prevT2Tot = 0;
+    CV_TIER_ORDER.forEach(function (t) { colTot[t] = 0; });
+    var body = rows.map(function (a) {
+      var v = chCur(a);
+      var tiers = CV_TIER_ORDER.map(function (t) {
+        var x = tierOfChan(a, t, cur);
+        colTot[t] += x;
+        return '<td class="cv-num">' + (x ? fmtInt(x) : '—') + '</td>';
+      }).join('');
+      var t2 = CV_TIER_T2PLUS.reduce(function (s, t) { return s + tierOfChan(a, t, cur); }, 0);
+      var pv = chPrev(a);
+      var pt2 = prev ? CV_TIER_T2PLUS.reduce(function (s, t) { return s + tierOfChan(a, t, prev); }, 0) : 0;
+      grand += v; t2Tot += t2; prevGrand += pv; prevT2Tot += pt2;
+      var curRate = safeDiv(t2, v);
+      var diff = (prev && pv > 0) ? (curRate - safeDiv(pt2, pv)) * 100 : null;
+      return '<tr><th class="cv-rowh">' + cvEsc(a.ch) + '</th>' + tiers
+        + '<td class="cv-num cv-bold"><div class="cv-bar" style="width:' + (v / maxCell * 100) + '%"></div><span>' + fmtInt(v) + '</span></td>'
+        + '<td class="cv-num">' + cvPct(curRate) + '</td>'
+        + '<td class="cv-num" style="color:' + (diff === null ? '#94a3b8' : (diff >= 0 ? '#dc2626' : '#16a34a')) + ';">' + (diff === null ? '—' : (diff >= 0 ? '+' : '') + diff.toFixed(1) + 'pp') + '</td></tr>';
+    }).join('');
+    var sumCells = CV_TIER_ORDER.map(function (t) { return '<td class="cv-num">' + (colTot[t] ? fmtInt(colTot[t]) : '—') + '</td>'; }).join('');
+    var sumDiff = (prev && prevGrand > 0) ? ((safeDiv(t2Tot, grand) - safeDiv(prevT2Tot, prevGrand)) * 100) : null;
+    var sumRow = '<tr class="cv-sum"><th class="cv-rowh">合计</th>' + sumCells
+      + '<td class="cv-num">' + fmtInt(grand) + '</td><td class="cv-num">' + cvPct(safeDiv(t2Tot, grand)) + '</td>'
+      + '<td class="cv-num" style="color:' + (sumDiff === null ? '#94a3b8' : (sumDiff >= 0 ? '#dc2626' : '#16a34a')) + ';">' + (sumDiff === null ? '—' : (sumDiff >= 0 ? '+' : '') + sumDiff.toFixed(1) + 'pp') + '</td></tr>';
+    el.innerHTML = cvTableStyle('tableCvTier')
+      + '<table><thead><tr><th>渠道</th>' + CV_TIER_ORDER.map(function (t) { return '<th>' + t + '</th>'; }).join('')
+      + '<th>合计</th><th>二线及以上占比</th><th>较上期</th></tr></thead><tbody>' + body + sumRow + '</tbody></table>'
+      + '<div class="cv-note">城市线取底表「城市等级」字段（空值、六线及以下统一归入「其他」）；「较上期」为二线及以上占比的百分点变化</div>';
+  })();
+
+  // ===== ④ 城市变化 =====
+  (function () {
+    var el = _el('tableCvCity');
+    if (!el) return;
+    var top = cityCur.slice(0, 15);
+    var maxCell = Math.max.apply(null, top.map(function (x) { return x.cur; }).concat([1]));
+    var prevCityTotal = cityPrev.reduce(function (s, c) { return s + c.prev; }, 0);
+    var body = top.map(function (x) {
+      var d = cvDelta(x.cur, x.prev);
+      return '<tr><th class="cv-rowh">' + cvEsc(x.city) + '</th><td>' + x.tier + '</td>'
+        + '<td class="cv-num cv-bold"><div class="cv-bar" style="width:' + (x.cur / maxCell * 100) + '%"></div><span>' + fmtInt(x.cur) + '</span></td>'
+        + '<td class="cv-num">' + cvPct(safeDiv(x.cur, curTotal)) + '</td>'
+        + '<td class="cv-num">' + (prev ? (x.prev ? fmtInt(x.prev) : '—') : '—') + '</td>'
+        + '<td class="cv-num" style="color:' + (d === null ? '#94a3b8' : (d >= 0 ? '#dc2626' : '#16a34a')) + ';">' + (d === null ? (prev && x.cur > 0 ? '新进' : '—') : (d >= 0 ? '+' : '') + cvPct(d)) + '</td>'
+        + '<td class="cv-num">' + cvPct(safeDiv(x.conv, x.cur)) + '</td></tr>';
+    }).join('');
+    var sumRow = '<tr class="cv-sum"><th class="cv-rowh">合计（' + cityCur.length + ' 城）</th><td>—</td><td class="cv-num">' + fmtInt(curTotal) + '</td><td class="cv-num">100.0%</td>'
+      + '<td class="cv-num">' + (prev ? fmtInt(prevCityTotal) : '—') + '</td><td class="cv-num">—</td>'
+      + '<td class="cv-num">' + cvPct(overallRate) + '</td></tr>';
+    var box = '<div class="cv-citystat">'
+      + '<span>有进量城市：<b>' + cityCur.length + '</b>（上期 ' + cityPrev.length + '）</span>'
+      + '<span style="color:#dc2626;">新增城市：<b>' + cityNew.length + '</b>' + (cityNew.length ? '（' + cvEsc(cityNew.slice(0, 6).join('、')) + (cityNew.length > 6 ? ' 等' : '') + '）' : '') + '</span>'
+      + '<span style="color:#16a34a;">消失城市：<b>' + cityGone.length + '</b>' + (cityGone.length ? '（' + cvEsc(cityGone.slice(0, 6).join('、')) + (cityGone.length > 6 ? ' 等' : '') + '）' : '') + '</span>'
+      + '<span>TOP5 城市集中度：<b>' + cvPct(safeDiv(cityTop5Sum, curTotal)) + '</b></span>'
+      + '</div>';
+    el.innerHTML = cvTableStyle('tableCvCity') + box
+      + '<table><thead><tr><th>城市</th><th>城市线</th><th>本期进量</th><th>占比</th><th>上期进量</th><th>' + (isLatest ? '说明' : cmpLabel) + '</th><th>转率</th></tr></thead><tbody>'
+      + body + sumRow + '</tbody></table>'
+      + '<div class="cv-note">仅列本期进量 TOP15 城市；「新增 / 消失」以上期有进量城市集合为基准' + (isLatest ? '；' + cvEsc(cur) + ' 仍在累积，城市覆盖数会继续增加' : '') + '</div>';
+  })();
+
+  // ===== ⑤ 周趋势 =====
+  (function () {
+    var chart = getOrCreateChart('chartCvWeek');
+    if (!chart) return;
+    chart.setOption({
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 } },
+      legend: { data: ['周进量'].concat(topWeekChannels), bottom: 4, textStyle: { fontSize: 11 }, itemWidth: 12, itemHeight: 8 },
+      grid: { left: 60, right: 60, top: 20, bottom: 60 },
+      xAxis: { type: 'category', data: weeks.map(function (w) { return cvWeekLabel(w.start); }), axisLabel: { fontSize: 11, color: '#1e293b', fontWeight: 600 } },
+      yAxis: [
+        { type: 'value', name: '周进量', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { fontSize: 11, color: '#334155' }, splitLine: { lineStyle: { color: '#eef2f7' } } },
+        { type: 'value', name: '渠道进量', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { fontSize: 11, color: '#334155' }, splitLine: { show: false } }
+      ],
+      series: [{ name: '周进量', type: 'bar', data: weeks.map(function (w) { return w.在班; }), itemStyle: { color: '#4f6ef7' }, barMaxWidth: 46 }]
+        .concat(topWeekChannels.map(function (ch, i) {
+          var palette = ['#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+          return { name: ch, type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, itemStyle: { color: palette[i % palette.length] }, data: weeks.map(function (w) { return w.byChannel[ch] || 0; }) };
+        }))
+    });
+  })();
+  (function () {
+    var el = _el('tableCvMomentum');
+    if (!el) return;
+    if (!weeks.length) { el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">无购课日期数据，无法生成周趋势</div>'; return; }
+    var wkRows = weeks.map(function (w, i) {
+      var p = i > 0 ? weeks[i - 1] : null;
+      var d = p ? cvDelta(w.在班, p.在班) : null;
+      var deltaCh = [];
+      if (p) {
+        var keys = {};
+        Object.keys(w.byChannel).forEach(function (k) { keys[k] = 1; });
+        Object.keys(p.byChannel).forEach(function (k) { keys[k] = 1; });
+        deltaCh = Object.keys(keys).map(function (k) { return { ch: k, d: (w.byChannel[k] || 0) - (p.byChannel[k] || 0) }; })
+          .sort(function (a, b) { return Math.abs(b.d) - Math.abs(a.d); }).slice(0, 2);
+      }
+      return '<tr><th class="cv-rowh">' + cvWeekLabel(w.start) + (i === weeks.length - 1 ? '（本周）' : '') + '</th>'
+        + '<td class="cv-num cv-bold">' + fmtInt(w.在班) + '</td>'
+        + '<td class="cv-num" style="color:' + (d === null ? '#94a3b8' : (d >= 0 ? '#dc2626' : '#16a34a')) + ';font-weight:700;">' + (d === null ? '—' : (d >= 0 ? '+' : '') + cvPct(d)) + '</td>'
+        + '<td class="cv-num">' + (p ? fmtInt(p.在班) : '—') + '</td>'
+        + '<td style="text-align:left;font-size:12px;color:#475569;">' + (deltaCh.length ? deltaCh.map(function (x) { return cvEsc(x.ch) + ' ' + (x.d > 0 ? '+' : '') + fmtInt(x.d); }).join('｜') : '—') + '</td></tr>';
+    }).join('');
+    var chWk = Object.keys(chWeekTot).map(function (ch) {
+      var last = weeks[weeks.length - 1].byChannel[ch] || 0;
+      var prevW = weeks.length > 1 ? (weeks[weeks.length - 2].byChannel[ch] || 0) : 0;
+      return { ch: ch, last: last, prev: prevW, tot: chWeekTot[ch] };
+    }).filter(function (x) { return x.tot > 0; }).sort(function (a, b) { return b.tot - a.tot; }).slice(0, 10);
+    var chBody = chWk.map(function (x) {
+      var d = cvDelta(x.last, x.prev);
+      return '<tr><th class="cv-rowh">' + cvEsc(x.ch) + '</th><td class="cv-num">' + fmtInt(x.tot) + '</td><td class="cv-num">' + fmtInt(x.last) + '</td>'
+        + '<td class="cv-num">' + fmtInt(x.prev) + '</td>'
+        + '<td class="cv-num" style="color:' + (d === null ? '#94a3b8' : (d >= 0 ? '#dc2626' : '#16a34a')) + ';font-weight:700;">' + (d === null ? '—' : (d >= 0 ? '+' : '') + cvPct(d)) + '</td></tr>';
+    }).join('');
+    el.innerHTML = cvTableStyle('tableCvMomentum')
+      + '<div class="cv-sub">周度进量（周三~周二）</div>'
+      + '<table><thead><tr><th>周区间</th><th>进量</th><th>环比</th><th>上周进量</th><th>主要变动渠道</th></tr></thead><tbody>' + wkRows + '</tbody></table>'
+      + '<div class="cv-sub" style="margin-top:16px;">渠道周环比动量（近 ' + weeks.length + ' 周累计进量 TOP10）</div>'
+      + '<table><thead><tr><th>渠道</th><th>近' + weeks.length + '周累计</th><th>本周</th><th>上周</th><th>本周环比</th></tr></thead><tbody>' + chBody + '</tbody></table>'
+      + '<div class="cv-note">＊源系统数据滞后约 2 天，末周进量偏低属正常；「本周」为含最新数据的那一周（当前 ' + cvEsc(weeks.length ? cvWeekLabel(weeks[weeks.length - 1].start) : '—') + '）</div>';
+  })();
+
+  // ===== ⑥ 进量 × 转率 =====
+  var rateList = rankList.map(function (a) {
+    var v = chCur(a);
+    return { ch: a.ch, v: v, conv: chConvCur(a), rate: safeDiv(chConvCur(a), v) };
+  }).filter(function (x) { return x.v > 0; });
+  var corr = cvPearson(rateList.map(function (x) { return x.v; }), rateList.map(function (x) { return x.rate; }));
+  var avgV = rateList.length ? curTotal / rateList.length : 0;
+  (function () {
+    var chart = getOrCreateChart('chartCvScatter');
+    if (!chart) return;
+    chart.setOption({
+      tooltip: {
+        backgroundColor: 'rgba(30,41,59,0.92)', borderColor: 'transparent', textStyle: { color: '#fff', fontSize: 12 },
+        formatter: function (p) { return cvEsc(p.data[3]) + '<br/>进量 ' + fmtInt(p.data[0]) + '<br/>转率 ' + cvPct(p.data[1]) + '<br/>转低 ' + fmtInt(p.data[2]); }
+      },
+      grid: { left: 75, right: 45, top: 30, bottom: 60 },
+      xAxis: { type: 'value', name: '进量（在班人次）', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { fontSize: 11, color: '#334155' }, splitLine: { lineStyle: { color: '#eef2f7' } } },
+      yAxis: { type: 'value', name: '转率', nameTextStyle: { fontSize: 11, color: '#334155' }, axisLabel: { fontSize: 11, color: '#334155', formatter: function (v) { return (v * 100).toFixed(1) + '%'; } }, splitLine: { lineStyle: { color: '#eef2f7' } } },
+      series: [{
+        type: 'scatter', symbolSize: function (d) { return Math.max(10, Math.min(46, Math.sqrt(d[0]) * 4)); },
+        itemStyle: { color: 'rgba(79,110,247,0.72)', borderColor: '#4f6ef7' },
+        label: { show: true, position: 'top', fontSize: 11, color: '#1e293b', formatter: function (p) { return p.data[3]; } },
+        data: rateList.map(function (x) { return [x.v, x.rate, x.conv, x.ch]; }),
+        markLine: {
+          silent: true, symbol: 'none', lineStyle: { type: 'dashed' },
+          data: [
+            { yAxis: 0.025, lineStyle: { color: '#f59e0b' }, label: { formatter: '创新思维目标 2.5%', fontSize: 11, color: '#b45309', position: 'insideEndTop' } },
+            { yAxis: 0.03, lineStyle: { color: '#10b981' }, label: { formatter: '阅读目标 3%', fontSize: 11, color: '#047857', position: 'insideEndBottom' } },
+            { xAxis: Math.round(avgV), lineStyle: { color: '#94a3b8' }, label: { formatter: '均量 ' + fmtInt(Math.round(avgV)), fontSize: 11, color: '#64748b' } }
+          ]
+        }
+      }]
+    });
+  })();
+  (function () {
+    var el = _el('tableCvRate');
+    if (!el) return;
+    var tierRows = CV_TIER_ORDER.map(function (t) {
+      var x = tierAgg[t];
+      var v = tierCurV(t);
+      var cv2 = (x && x.byPeriod[cur] ? x.byPeriod[cur].转低 : 0);
+      return { tier: t, v: v, conv: cv2, rate: safeDiv(cv2, v) };
+    }).filter(function (x) { return x.v > 0; });
+    var totV = tierRows.reduce(function (s, x) { return s + x.v; }, 0);
+    var totC = tierRows.reduce(function (s, x) { return s + x.conv; }, 0);
+    var body = tierRows.map(function (x) {
+      return '<tr><th class="cv-rowh">' + x.tier + '</th><td class="cv-num">' + fmtInt(x.v) + '</td><td class="cv-num">' + fmtInt(x.conv) + '</td>'
+        + '<td class="cv-num cv-bold" style="color:' + (x.rate >= overallRate ? '#dc2626' : '#16a34a') + ';">' + cvPct(x.rate) + '</td>'
+        + '<td class="cv-num">' + cvPct(safeDiv(x.v, totV)) + '</td></tr>';
+    }).join('');
+    var sumRow = '<tr class="cv-sum"><th class="cv-rowh">合计</th><td class="cv-num">' + fmtInt(totV) + '</td>'
+      + '<td class="cv-num">' + fmtInt(totC) + '</td><td class="cv-num">' + cvPct(safeDiv(totC, totV)) + '</td><td class="cv-num">100.0%</td></tr>';
+    var quads = ['主力（量大率高）', '优化重点（量大率低）', '潜力（量小率高）', '观察（量小率低）'];
+    var q = {}; quads.forEach(function (k) { q[k] = []; });
+    rateList.forEach(function (x) {
+      var bigV = x.v >= avgV, bigR = x.rate >= overallRate;
+      var k = bigV && bigR ? quads[0] : (bigV && !bigR ? quads[1] : (!bigV && bigR ? quads[2] : quads[3]));
+      q[k].push(x);
+    });
+    var qHtml = quads.map(function (k) {
+      var list = q[k].slice().sort(function (a, b) { return b.v - a.v; }).slice(0, 6);
+      var txt = list.length ? list.map(function (x) { return cvEsc(x.ch) + '（' + fmtInt(x.v) + '／' + cvPct(x.rate) + '）'; }).join('、') : '无';
+      var color = k === quads[0] ? '#047857' : (k === quads[1] ? '#b91c1c' : (k === quads[2] ? '#b45309' : '#64748b'));
+      return '<div class="cv-quad"><b style="color:' + color + ';">' + k + '（' + q[k].length + '）</b>：' + txt + '</div>';
+    }).join('');
+    el.innerHTML = cvTableStyle('tableCvRate')
+      + '<div class="cv-sub">各城市线转率（本期，转率 = 转低人次 / 在班人次）</div>'
+      + '<table><thead><tr><th>城市线</th><th>进量</th><th>转低人次</th><th>转率</th><th>进量占比</th></tr></thead><tbody>' + body + sumRow + '</tbody></table>'
+      + '<div class="cv-sub" style="margin-top:16px;">进量 × 转率四象限（阈值：均量 ' + fmtInt(Math.round(avgV)) + '｜整体转率 ' + cvPct(overallRate) + '）</div>'
+      + '<div class="cv-quadbox">' + qHtml + '</div>'
+      + '<div class="cv-note">渠道进量与其转率的皮尔逊相关系数 r = ' + (corr === null ? '—' : corr.toFixed(2)) + '（n=' + rateList.length + ' 个渠道）'
+      + (corr === null ? '' : (Math.abs(corr) < 0.2 ? '，相关性弱：进量规模与转率基本独立' : (corr > 0 ? '，正相关：量大的渠道转率也偏高' : '，负相关：量大的渠道转率偏低，需关注承接质量')))
+      + '。转率目标：创新思维 2.5% / 阅读 3%</div>';
+  })();
+
+  // ===== ⑦ 分析结论 =====
+  (function () {
+    var el = _el('cvInsights');
+    if (!el) return;
+    var items = [];
+    var top3 = rankList.slice(0, 3);
+    var cr3 = safeDiv(crTop3, curTotal);
+    items.push('进量集中度：' + cvEsc(cur) + ' 共 ' + activeN + ' 个渠道有进量，合计 ' + fmtInt(curTotal) + '；TOP3（' + top3.map(function (a) { return cvEsc(a.ch) + ' ' + fmtInt(chCur(a)); }).join('、') + '）占比 ' + cvPct(cr3) + (cr3 >= 0.6 ? '，集中度偏高，单一渠道波动会直接放大到整体。' : '，渠道结构相对分散。'));
+    if (prev && prevTotal > 0) {
+      var byDiff = rankList.slice().sort(function (a, b) { return (chCur(b) - chPrev(b)) - (chCur(a) - chPrev(a)); });
+      var upCh = byDiff[0], downCh = byDiff[byDiff.length - 1];
+      items.push((isLatest
+        ? ('数据截至 ' + fmd + '（源系统滞后约 2 天），' + cvEsc(cur) + ' 仍在累积（当前 ' + fmtInt(curTotal) + '），与 ' + cvEsc(prev) + ' 整期（' + fmtInt(prevTotal) + '）不做直接比较；近 7 天进量 ' + fmtInt(r7) + '，环比前 7 天 ' + (wd7 === null ? '—' : (wd7 >= 0 ? '+' : '') + cvPct(wd7)) + '；')
+        : (cmpLabel + '：' + (momTotal >= 0 ? '+' : '') + cvPct(momTotal) + '（' + fmtInt(prevTotal) + ' → ' + fmtInt(curTotal) + '）；'))
+        + (function () {
+          var du = chCur(upCh) - chPrev(upCh), dd = chCur(downCh) - chPrev(downCh);
+          var s1 = du >= 0 ? ('增量最大 ' + cvEsc(upCh.ch) + '（+' + fmtInt(du) + '）') : ('全渠道环比普降，降幅最小 ' + cvEsc(upCh.ch) + '（' + fmtInt(du) + '）');
+          var s2 = (downCh.ch !== upCh.ch && dd < 0) ? ('，降幅最大 ' + cvEsc(downCh.ch) + '（' + fmtInt(dd) + '）') : '';
+          return s1 + s2 + '。';
+        })());
+      var t2d = (safeDiv(curT2, curTotal) - safeDiv(prevT2, prevTierSum)) * 100;
+      items.push('结构偏移：二线及以上占比 ' + cvPct(safeDiv(curT2, curTotal)) + '（上期 ' + cvPct(safeDiv(prevT2, prevTierSum)) + '，' + (t2d >= 0 ? '+' : '') + t2d.toFixed(1) + 'pp）；' + (t2d >= 0 ? '城市线结构上移，对转率是正向支撑。' : '城市线结构下移，低线城市占比升高，若承接与转化动作跟不上，整体转率会被摊薄。'));
+      if (cityNew.length || cityGone.length) items.push('城市变化：新增 ' + cityNew.length + ' 城' + (cityNew.length ? '（' + cvEsc(cityNew.slice(0, 5).join('、')) + (cityNew.length > 5 ? ' 等' : '') + '）' : '') + '，消失 ' + cityGone.length + ' 城' + (cityGone.length ? '（' + cvEsc(cityGone.slice(0, 5).join('、')) + (cityGone.length > 5 ? ' 等' : '') + '）' : '') + '；' + (isLatest ? '本期仍在累积，覆盖城市数会随数据补充继续上升，暂不做扩张 / 收缩判断。' : ('城市覆盖呈' + (cityNew.length >= cityGone.length ? '扩张' : '收缩') + '态势。')));
+    }
+    var mismatch = rateList.slice(0, 5).filter(function (x) { return x.rate < overallRate; });
+    if (!(curConv > 0)) items.push('量率现状：本期尚无可统计的转低记录（转率 0.0%），量率分析暂不可用；待转化数据回填后再看。');
+    else if (mismatch.length) items.push('量率错配：进量 TOP5 中 ' + mismatch.map(function (x) { return cvEsc(x.ch) + '（进量 ' + fmtInt(x.v) + '，转率 ' + cvPct(x.rate) + '）'; }).join('、') + ' 低于本期整体转率 ' + cvPct(overallRate) + '，属「量大率低」，建议优先排查承接与转化动作。');
+    else if (rateList.length) items.push('量率表现：进量 TOP5 渠道转率均不低于本期整体（' + cvPct(overallRate) + '），主力渠道量率匹配良好。');
+    if (weeks.length >= 2) {
+      var wLast = weeks[weeks.length - 1], wPrev = weeks[weeks.length - 2];
+      var wd = cvDelta(wLast.在班, wPrev.在班);
+      items.push('近期趋势：最近一周（' + cvWeekLabel(wLast.start) + '）进量 ' + fmtInt(wLast.在班) + '，环比上周 ' + (wd === null ? '—' : (wd >= 0 ? '+' : '') + cvPct(wd)) + '；源系统滞后约 2 天，末周偏低属正常。');
+    }
+    items.push('对转率的影响：' + (corr === null ? '渠道样本不足（n=' + rateList.length + '），暂不做相关性判断。' : ('渠道进量与转率相关系数 r = ' + corr.toFixed(2) + '（n=' + rateList.length + '），' + (Math.abs(corr) < 0.2 ? '规模与转率基本独立 —— 转率差异主要来自渠道质量与承接动作，而不是进量大小。' : (corr > 0 ? '量大的渠道转率也偏高，规模与质量同向，可继续加大投放。' : '量大的渠道转率反而偏低，规模扩张伴随质量摊薄，需同步加强承接。')))));
+    if (curTotal < 200) items.push('⚠️ 本期样本较小（进量 ' + fmtInt(curTotal) + '），上述比率类结论仅供参考。');
+    el.innerHTML = cvTableStyle('cvInsights') + '<div class="cv-insightbox"><div class="cv-insighttitle">分析结论（自动生成，随筛选实时变化）</div><ol>'
+      + items.map(function (t) { return '<li>' + t + '</li>'; }).join('')
+      + '</ol></div>';
+  })();
+}
+
+// 渠道进量 Tab 的表格样式（前缀 cv-，随渲染刷新，不污染全局）
+function cvTableStyle(scope) {
+  return '<style>'
+    + '#' + scope + ' table{width:100%;border-collapse:collapse;table-layout:auto}'
+    + '#' + scope + ' th,#' + scope + ' td{padding:8px 10px;font-size:13px;border-bottom:1px solid #e2e8f0;white-space:nowrap;position:relative}'
+    + '#' + scope + ' thead th{background:#1e293b;color:#fff;font-size:12px;font-weight:700;text-align:center;position:sticky;top:0;z-index:3}'
+    + '#' + scope + ' thead th:first-child{text-align:left}'
+    + '#' + scope + ' tbody th.cv-rowh{text-align:left;font-weight:700;background:#f1f5f9;color:#0f172a;position:sticky;left:0;z-index:2;font-size:13px}'
+    + '#' + scope + ' tbody td{text-align:center;color:#334155}'
+    + '#' + scope + ' td.cv-num{font-variant-numeric:tabular-nums}'
+    + '#' + scope + ' td.cv-bold{font-weight:800;color:#0f172a}'
+    + '#' + scope + ' td.cv-ch{text-align:left;font-weight:600;color:#0f172a}'
+    + '#' + scope + ' tr.cv-sum th,#' + scope + ' tr.cv-sum td{background:#fefce8;font-weight:800;border-top:2px solid #eab308;color:#0f172a}'
+    + '#' + scope + ' tr:hover td,#' + scope + ' tr:hover th{background:#f3f8ff}'
+    + '#' + scope + ' .cv-bar{position:absolute;left:0;top:2px;bottom:2px;background:rgba(79,110,247,0.16);border-radius:3px;z-index:0;pointer-events:none}'
+    + '#' + scope + ' .cv-bar+span{position:relative;z-index:1}'
+    + '#' + scope + ' .cv-note{font-size:11.5px;color:#64748b;margin-top:8px;line-height:1.7}'
+    + '#' + scope + ' .cv-sub{font-size:13.5px;font-weight:700;color:#1e293b;margin:14px 0 8px;}'
+    + '#' + scope + ' .cv-citystat{display:flex;flex-wrap:wrap;gap:18px;font-size:12.5px;color:#475569;background:var(--primary-light);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:12px}'
+    + '#' + scope + ' .cv-quadbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:12px 14px}'
+    + '#' + scope + ' .cv-quad{font-size:12.5px;color:#334155;line-height:1.9}'
+    + '#' + scope + ' .cv-insightbox{background:var(--surface);border-left:4px solid var(--primary);border-radius:var(--radius-sm);padding:14px 18px}'
+    + '#' + scope + ' .cv-insighttitle{font-size:13.5px;font-weight:800;color:#1e293b;margin-bottom:8px}'
+    + '#' + scope + ' ol{margin:0;padding-left:20px}'
+    + '#' + scope + ' ol li{font-size:13px;color:#334155;line-height:1.9;margin-bottom:2px}'
+    + '</style>';
+}
+
 // ===== RENDER ALL =====
 function renderAll() {
   if (currentTab === 'settlement') { renderSettlement(); return; }
+  if (currentTab === 'chvol') { renderChannelVolume(); return; }
   const records = getFilteredDetail();
   if (records.length === 0) {
     document.getElementById('kpiRow').innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px;">📭 筛选结果为空，请调整筛选条件</div>';
@@ -5076,13 +5750,13 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  const tabMap = { trend: 'Trend', channel: 'Channel', grade: 'Grade', chgrade: 'Chgrade', detail: 'Detail', bd: 'Bd', logic: 'Logic', city: 'City', hotspot: 'Hotspot', flow: 'Flow', fullfunnel: 'FullFunnel', settlement: 'Settlement' };
+  const tabMap = { trend: 'Trend', channel: 'Channel', grade: 'Grade', chgrade: 'Chgrade', detail: 'Detail', bd: 'Bd', logic: 'Logic', city: 'City', hotspot: 'Hotspot', flow: 'Flow', fullfunnel: 'FullFunnel', settlement: 'Settlement', chvol: 'ChannelVol' };
   const contentDiv = document.getElementById('tab' + tabMap[tab]);
   if (contentDiv) contentDiv.classList.add('active');
-  // Find the button and activate it
+  // Find the button and activate it（按 onclick 精确匹配，避免「渠道对比 / 渠道进量」等前缀串台）
   Array.from(document.querySelectorAll('.tab-btn')).forEach(b => {
-    const labelMap = { trend: '趋势', channel: '渠道', grade: '年级', chgrade: '渠道年级', detail: '明细', bd: '商务', logic: '字段', city: '城市', hotspot: '热点', flow: '流量', fullfunnel: '全链路', settlement: '结算' };
-    if (b.textContent.includes(labelMap[tab])) b.classList.add('active');
+    const m = /switchTab\('([^']+)'\)/.exec(b.getAttribute('onclick') || '');
+    if (m && m[1] === tab) b.classList.add('active');
   });
   // Resize charts on tab switch
   setTimeout(() => {
