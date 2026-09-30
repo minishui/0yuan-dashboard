@@ -8197,7 +8197,10 @@ function renderFullFunnel(records) {
 
   // Sort
   if (dm.order) {
-    list.sort(function(a, b) { return dm.order.indexOf(a.key) - dm.order.indexOf(b.key); });
+    // ⚠️ 不在 order 列表中的取值必须排到最后（indexOf 返回 -1 会算成最前，
+    // 曾导致新期次（秋4期/秋5期）插到「春6期」前面）。
+    var _oi = function(k) { var i = dm.order.indexOf(k); return i === -1 ? 1e9 : i; };
+    list.sort(function(a, b) { return _oi(a.key) - _oi(b.key) || (b.在班人次 - a.在班人次); });
   } else {
     list.sort(function(a, b) { return b.在班人次 - a.在班人次; });
   }
@@ -8536,7 +8539,16 @@ var CHANNEL_MAP_JS = {
   '进校内部':'进校内部','进校活动':'进校活动','华南活动':'华南活动'
 };
 // 基准期次顺序（已知期次），运行时自动追加数据中新发现的期次到末尾
-var PERIOD_ORDER_BASE = ['春6期','春7期','春8期','春9期','春10期','春11期','春12期','春13期','春14期','夏1期','夏2期','夏3期','夏4期','夏5期','夏6期','夏7期','夏8期','夏9期','夏10期','夏11期','夏12期','夏13期','秋1期','秋2期','秋3期'];
+var PERIOD_ORDER_BASE = ['春6期','春7期','春8期','春9期','春10期','春11期','春12期','春13期','春14期','夏1期','夏2期','夏3期','夏4期','夏5期','夏6期','夏7期','夏8期','夏9期','夏10期','夏11期','夏12期','夏13期','秋1期','秋2期','秋3期','秋4期','秋5期'];
+// 兜底自愈：把 DATA.period_order 中出现、但本基准表还没有的期次追加到末尾，
+// 保证「切新期次」时不必手改这份数组，也不会因 indexOf=-1 把新期次排到最前。
+if (typeof PERIOD_ORDER !== 'undefined' && PERIOD_ORDER && PERIOD_ORDER.length) {
+  for (var _pi = 0; _pi < PERIOD_ORDER.length; _pi++) {
+    if (PERIOD_ORDER_BASE.indexOf(PERIOD_ORDER[_pi]) === -1) {
+      PERIOD_ORDER_BASE.push(PERIOD_ORDER[_pi]);
+    }
+  }
+}
 
 // 根据数据中实际出现的期次 + 基准顺序，动态生成完整期次排序列表
 function buildPeriodOrder(periodSet) {
