@@ -938,6 +938,45 @@ var FILTER_KEY_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Gra
 var FILTER_LABEL_MAP = { Period:'期次', Semester:'学期', Channel:'渠道', Grade:'年级', Subject:'学科', Month:'月份', BuyDate:'购课日期', ChannelType:'渠道类型', BD:'商务BD', Teacher:'辅导姓名', Group:'学科组名称', CityLine:'城市等级', City:'城市', ConvLink:'转化链路' };
 var PERIOD_ORDER = DATA.period_order;
 
+// ===== BD（商务）归属映射 =====
+// ⚠️ 2026-10-09 上移为「唯一定义源」：此前 deriveVirtualFields 内有一份提前副本(_BD_MAP)、
+//    约 5830 行处另有一份全局 BD_MAP，两份手动同步极易遗漏（铁律 4）。
+//    现改为单份定义 + 下方的 getBdByChannel() 统一查询，彻底消除不同步风险。
+const BD_MAP = {
+  '昊旗科技': '徐冲', '和谐号': '杨文丽', '津艺树人': '杨文丽', '梅森信息': '徐冲',
+  '千机教育': '徐冲', '青松': '杨文丽', '书妈妈': '徐冲', '学海': '刘家欢',
+  '育见锦途': '杨文丽', '中碳': '杨文丽', '中碳汇智': '杨文丽', '中添教育': '徐冲', '简单教育': '刘家欢',
+  '兰芷阁': '徐冲', '蓝海': '徐冲', '中投基金': '徐冲', '宸陌信息': '徐冲',
+  '华南活动': '徐冲', '研吧教育': '徐冲', '兴学教育': '杨文丽', '九州云享': '徐冲',
+  '飞梭科技': '杨文丽', '研而学': '杨文丽', '智能科技': '杨文丽', '南柒': '杨文丽',
+  '湖南润泽': '徐冲', '善朝': '杨文丽', '掌通': '刘家欢', '鲁信': '徐冲', '玄览': '徐冲',
+  '季翀网络': '王雨', '亚太信息': '杨文丽', '江和教育': '徐冲', '翰钧': '徐冲', '亿弘': '刘家欢',
+  '致经典': '进校活动', '进校平台': '进校活动', '进校内部': '进校活动', '进校活动': '进校活动',
+  '准效营销': '储志来', '梦优': '储志来',
+  // 2026-10-09 新增商务 陈天钰（渠道名取自在线文档《中台进校渠道信息维护》：卓企 22643 / 玺云 22644）
+  '潍坊卓企': '陈天钰', '卓企': '陈天钰', '玺云': '陈天钰',
+  '南昌向上君教育科技有限公司': '杨国威'
+};
+
+// ===== 按期次生效的 BD 归属覆盖（2026-10-09 水水指示）=====
+// 「从 10 月开始，刘家欢的渠道归徐冲所有」→ 自秋5期起生效，历史期次保留原归属（刘家欢）。
+// 期次比较走 PERIOD_ORDER 下标；期次未知（indexOf 为 -1）时不生效，保守回退 BD_MAP，
+// 避免「静态顺序数组 + indexOf」把未知期次误判为最前的老问题（铁律 2）。
+const BD_PERIOD_OVERRIDE = {
+  fromPeriod: '秋5期',
+  map: { '学海': '徐冲', '简单教育': '徐冲', '掌通': '徐冲', '亿弘': '徐冲' }
+};
+
+// 统一查询入口：所有「渠道 → 商务BD」的推导都必须走这里（含期次覆盖）
+function getBdByChannel(ch, period) {
+  var pi = PERIOD_ORDER.indexOf(period);
+  var fi = PERIOD_ORDER.indexOf(BD_PERIOD_OVERRIDE.fromPeriod);
+  if (pi !== -1 && fi !== -1 && pi >= fi && BD_PERIOD_OVERRIDE.map[ch]) {
+    return BD_PERIOD_OVERRIDE.map[ch];
+  }
+  return BD_MAP[ch] || '其他';
+}
+
 // ===== Channel type mapping（提前定义，供 deriveVirtualFields 调用） =====
 // ⚠️ 权威源：~/Downloads/商务-渠道-类型-进量预估.xlsx 的「类型」列（渠道名以看板实际名为准）
 // 2026-09-21 按权威表补全，消除「其他」兜底
@@ -989,27 +1028,15 @@ function getConvLink(period) {
 // 定义为命名函数，页面加载和导入数据后均需调用
 function deriveVirtualFields() {
   // 渠道类型统一由 getChannelType() + 顶部 CHANNEL_TYPE 提供（此处原有第二份副本已删除，避免双份遗漏）
-  // ⚠️ 必须与下方全局 BD_MAP（约 5150 行处）完全一致：此处是提前副本，供页面加载时派生「商务BD」字段
-  var _BD_MAP = {
-    '昊旗科技': '徐冲', '和谐号': '杨文丽', '津艺树人': '杨文丽', '梅森信息': '徐冲',
-    '千机教育': '徐冲', '青松': '杨文丽', '书妈妈': '徐冲', '学海': '刘家欢',
-    '育见锦途': '杨文丽', '中碳': '杨文丽', '中碳汇智': '杨文丽', '中添教育': '徐冲', '简单教育': '刘家欢',
-    '兰芷阁': '徐冲', '蓝海': '徐冲', '中投基金': '徐冲', '宸陌信息': '徐冲',
-    '华南活动': '徐冲', '研吧教育': '徐冲', '兴学教育': '杨文丽', '九州云享': '徐冲',
-    '飞梭科技': '杨文丽', '研而学': '杨文丽', '智能科技': '杨文丽', '南柒': '杨文丽',
-    '湖南润泽': '徐冲', '善朝': '杨文丽', '掌通': '刘家欢', '鲁信': '徐冲', '玄览': '徐冲',
-    '季翀网络': '王雨', '亚太信息': '杨文丽', '江和教育': '徐冲', '翰钧': '徐冲', '亿弘': '刘家欢',
-    '致经典': '进校活动', '进校平台': '进校活动', '进校内部': '进校活动', '进校活动': '进校活动',
-    '准效营销': '储志来', '梦优': '储志来',
-    '南昌向上君教育科技有限公司': '杨国威'
-  };
+  // 商务BD 统一走顶部 getBdByChannel(渠道, 期次)：内含「秋5期起 刘家欢渠道归徐冲」的按期次覆盖，
+  // 传期次后历史记录保留原归属，避免「一刀切改 map 导致历史 BD 业绩突变」
   var typeSet = new Set();
   var bdSet = new Set();
   var linkSet = new Set();
   if (DATA.detail_records) {
     DATA.detail_records.forEach(function(r) {
       r['渠道类型'] = getChannelType(r['渠道'], r['期次']);
-      r['商务BD'] = _BD_MAP[r['渠道']] || '其他';
+      r['商务BD'] = getBdByChannel(r['渠道'], r['期次']);
       r['转化链路'] = getConvLink(r['期次']);
       typeSet.add(r['渠道类型']);
       bdSet.add(r['商务BD']);
@@ -1019,7 +1046,7 @@ function deriveVirtualFields() {
   // 生成筛选选项列表（按固定顺序）
   var typeOrder = ['活动进校', '捐赠进校', '单校直推', '进校APP', '进校社群', '其他'];
   DATA.filters['渠道类型'] = typeOrder.filter(function(t) { return typeSet.has(t); });
-  var bdOrder = ['徐冲', '杨文丽', '刘家欢', '储志来', '王雨', '进校活动', '杨国威', '其他'];
+  var bdOrder = ['徐冲', '杨文丽', '陈天钰', '刘家欢', '储志来', '王雨', '进校活动', '杨国威', '其他'];
   DATA.filters['商务BD'] = bdOrder.filter(function(b) { return bdSet.has(b); });
   var linkOrder = ['0-153', '0-299'];
   DATA.filters['转化链路'] = linkOrder.filter(function(l) { return linkSet.has(l); });
@@ -2203,7 +2230,7 @@ function renderTrendDynamic(records) {
   filtered.forEach(function(r) {
     var key;
     if (dim === 'BD') {
-      key = BD_MAP[r['渠道']] || '其他';
+      key = r['商务BD'] || '其他';
     } else {
       key = r[dim];
     }
@@ -5057,7 +5084,7 @@ function renderChannelGradeDaily(records) {
         cells += `<td><div class="cg-dv">${fmtInt(tot)}</div><div class="cg-gp">${gp}</div></td>`;
       }
     });
-    const bd = BD_MAP[ch] || '其他';
+    const bd = getBdByChannel(ch, getCurrentAggPeriod());
     body += `<tr><th class="cg-rowh">${esc(ch)}（${esc(bd)}）</th>${cells}<td class="cg-tot">${fmtInt(rowTot)}</td></tr>`;
   });
   body += '</tbody>';
@@ -5359,7 +5386,7 @@ function renderChannelVolume(records) {
       var pv = chPrev(a);
       var d = cvDelta(v, pv);
       var ct = getChannelType(a.ch, cur);
-      var bd = BD_MAP[a.ch] || '其他';
+      var bd = getBdByChannel(a.ch, cur);
       var t = cvChanTarget(tgt.map[a.ch]);
       sum.在班 += v; sum.转低 += chConvCur(a); sum.prev += pv; sum.tgt += t;
       var dColor = d === null ? '#94a3b8' : (d >= 0 ? '#dc2626' : '#16a34a');
@@ -5813,7 +5840,9 @@ var MONTHLY_TARGET_MAP = {
   '2026-06': { total: 40500, bd: { '刘家欢': 13500, '杨文丽': 13500, '徐冲': 13500 } },
   '2026-07': { total: 24000, bd: { '刘家欢': 8000, '杨文丽': 8000, '徐冲': 8000 } },
   '2026-08': { total: 15000, bd: { '刘家欢': 5000, '杨文丽': 5000, '徐冲': 5000 } },
-  '2026-09': { total: 21000, bd: { '刘家欢': 7000, '杨文丽': 7000, '徐冲': 7000 } }
+  '2026-09': { total: 21000, bd: { '刘家欢': 7000, '杨文丽': 7000, '徐冲': 7000 } },
+  // 2026-10：刘家欢渠道自秋5期起归徐冲，新增商务 陈天钰（水水 2026-10-09 指示：每人 7,000）
+  '2026-10': { total: 21000, bd: { '徐冲': 7000, '杨文丽': 7000, '陈天钰': 7000 } }
 };
 
 // Get BD targets for a given month (default to latest defined)
@@ -5827,20 +5856,8 @@ function getMonthlyTarget(month) {
   return t;
 }
 
-// BD_MAP unchanged
-const BD_MAP = {
-  '昊旗科技': '徐冲', '和谐号': '杨文丽', '津艺树人': '杨文丽', '梅森信息': '徐冲',
-  '千机教育': '徐冲', '青松': '杨文丽', '书妈妈': '徐冲', '学海': '刘家欢',
-  '育见锦途': '杨文丽', '中碳': '杨文丽', '中碳汇智': '杨文丽', '中添教育': '徐冲', '简单教育': '刘家欢',
-  '兰芷阁': '徐冲', '蓝海': '徐冲', '中投基金': '徐冲', '宸陌信息': '徐冲',
-  '华南活动': '徐冲', '研吧教育': '徐冲', '兴学教育': '杨文丽', '九州云享': '徐冲',
-  '飞梭科技': '杨文丽', '研而学': '杨文丽', '智能科技': '杨文丽', '南柒': '杨文丽',
-  '湖南润泽': '徐冲', '善朝': '杨文丽', '掌通': '刘家欢', '鲁信': '徐冲', '玄览': '徐冲',
-  '季翀网络': '王雨', '亚太信息': '杨文丽', '江和教育': '徐冲', '翰钧': '徐冲', '亿弘': '刘家欢',
-  '致经典': '进校活动', '进校平台': '进校活动', '进校内部': '进校活动', '进校活动': '进校活动',
-  '准效营销': '储志来', '梦优': '储志来',
-  '南昌向上君教育科技有限公司': '杨国威'
-};
+// BD_MAP 定义已于 2026-10-09 上移至文件顶部（PERIOD_ORDER 之后），供 deriveVirtualFields 早期调用，
+// 并消除「提前副本 + 全局副本」双份不同步隐患。所有「渠道 → 商务BD」查询请统一走 getBdByChannel(渠道, 期次)。
 // BD_TARGET and MONTHLY_TARGET are now dynamic via getMonthlyTarget(month)
 
 // Channel period targets (per 7-day period). Update these values daily alongside the Excel data.
@@ -5989,15 +6006,19 @@ const CHANNEL_PERIOD_TARGET = {
     '和谐号': { '创新思维': 0, '阅读': 200 },
     '亚太信息': { '创新思维': 0, '阅读': 100 },
   },
-  // 秋5期目标（2026-09-30 依在线文档《【进校0元】量级&产能&信息汇总表》回填）
+  // 秋5期目标（2026-09-30 首次回填；2026-10-09 依在线文档最新版校正：补 千机教育200 + 新增渠道 潍坊卓企2000）
+  // 文档秋5期明细：昊旗科技2000 / 季翀网络1000 / 玄览300 / 九州云享200 / 千机教育200 / 探究中心200 / 盛德维新200 / 星梦起航100 / 潍坊卓企2000（陈天钰）
+  // 研吧教育「待定」不计入；合计 6,200
   '秋5期': {
     '昊旗科技': { '创新思维': 0, '阅读': 2000 },
     '季翀网络': { '创新思维': 0, '阅读': 1000 },
     '玄览': { '创新思维': 0, '阅读': 300 },
     '九州云享': { '创新思维': 0, '阅读': 200 },
+    '千机教育': { '创新思维': 0, '阅读': 200 },
     '探究中心': { '创新思维': 0, '阅读': 200 },
     '盛德维新': { '创新思维': 0, '阅读': 200 },
     '星梦起航': { '创新思维': 0, '阅读': 100 },
+    '潍坊卓企': { '创新思维': 0, '阅读': 2000 },
     // 研吧教育（待定） 目标在线文档标注「待定」，暂不计入
   },
 
@@ -6139,6 +6160,11 @@ function renderBdMonthly(records) {
     var _bd = BD_MAP[ch];
     if (_bd && !Object.prototype.hasOwnProperty.call(BD_TARGET, _bd)) BD_TARGET[_bd] = 0;
   });
+  // 2026-10-09：按期次覆盖后可能出现新的归属名（如 陈天钰），以 records 实际派生的「商务BD」再补一轮
+  records.forEach(function(r) {
+    var _bd2 = r['商务BD'];
+    if (_bd2 && !Object.prototype.hasOwnProperty.call(BD_TARGET, _bd2)) BD_TARGET[_bd2] = 0;
+  });
 
   // Aggregate by channel (for channel detail)
   const chData = {};
@@ -6155,7 +6181,7 @@ function renderBdMonthly(records) {
   Object.keys(BD_TARGET).forEach(bd => { bdData[bd] = { name: bd, target: BD_TARGET[bd], 在班人次: 0, 转低人次: 0, 转正人次: 0, channels: new Set() }; });
   records.forEach(r => {
     const ch = r.渠道;
-    const bd = BD_MAP[ch];
+    const bd = r['商务BD'];
     if (bd && bdData[bd]) {
       bdData[bd].在班人次 += r.在班人次 || 0;
       bdData[bd].转低人次 += r.转低人次 || 0;
@@ -6322,7 +6348,7 @@ function renderBdMonthly(records) {
   });
   records.forEach(function(r) {
     var ch = r.渠道;
-    var bd = BD_MAP[ch];
+    var bd = r['商务BD'];
     if (bd && bdDetailMap[bd]) {
       var m = bdDetailMap[bd];
       var n = r.在班人次 || 0;
@@ -7588,7 +7614,7 @@ function renderFlow(records) {
   const seenChannels = new Set();
   records.forEach(r => { seenChannels.add(r.渠道); });
   seenChannels.forEach(ch => {
-    const bd = BD_MAP[ch] || '其他';
+    const bd = getBdByChannel(ch, getCurrentAggPeriod());
     if (!bdChannelMap[bd]) bdChannelMap[bd] = [];
     bdChannelMap[bd].push(ch);
   });
@@ -7843,7 +7869,7 @@ function renderFlow(records) {
 
     chList.forEach((c, idx) => {
       const ct = getChannelType(c.channel, getCurrentAggPeriod());
-      const bdName = BD_MAP[c.channel] || '未知';
+      const bdName = getBdByChannel(c.channel, getCurrentAggPeriod());
       var curTargets2 = getCurrentChannelTargets();
       const chTarget = curTargets2[c.channel];
       const hasTarget = chTarget != null;
