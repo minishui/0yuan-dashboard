@@ -983,6 +983,45 @@ function getBdByChannel(ch, period) {
   return BD_MAP[ch] || '其他';
 }
 
+// ===== 渠道名归一（同义双写收敛）=====
+// 2026-10-12：修复「渠道进量 Tab 里 卓企 1,619 人次的目标/渠道类型双双落空、秋5合计目标只有 4,000」。
+// 背景：看板**数据侧**渠道名与「目标表 CHANNEL_PERIOD_TARGET / 渠道类型表 CHANNEL_TYPE / 在线文档」
+//      存在同义双写（数据侧『卓企』↔ 目标表『潍坊卓企』；数据侧『中碳』↔ 夏期目标表『中碳汇智』），
+//      裸 key 查找必然落空 → 目标显示「—」、渠道类型兜底「其他」、合计目标偏小。
+// 规范名统一取「看板数据实际渠道名」（聚合以数据渠道为主键）；
+// ⚠️ 新增同义词必须两侧确认过再写，禁止臆测（与 scripts/fetch_targets_from_doc.py 的 CHANNEL_ALIAS 同源）。
+const CHANNEL_CANON = {
+  '潍坊卓企': '卓企',      // 在线文档首表/秋5目标行写「卓企」，数据侧亦为「卓企」
+  '中碳汇智': '中碳'       // 夏7/夏10/秋1 目标列写「中碳汇智」，数据侧为「中碳」
+};
+function chanCanon(name) {
+  var n = String(name === undefined || name === null ? '' : name);
+  return CHANNEL_CANON[n] || n;
+}
+// 目标查找：原名 → 规范名 → 遍历键比较规范名（兼容目标表任一侧用词）
+function chanTargetOf(map, ch) {
+  if (!map) return undefined;
+  if (map[ch] !== undefined) return map[ch];
+  var c = chanCanon(ch);
+  if (map[c] !== undefined) return map[c];
+  var ks = Object.keys(map);
+  for (var i = 0; i < ks.length; i++) {
+    if (chanCanon(ks[i]) === c) return map[ks[i]];
+  }
+  return undefined;
+}
+// 渠道类型查找：同上做归一并列（CHANNEL_TYPE 里任一侧写法都能命中）
+function chanTypeOf(name) {
+  if (CHANNEL_TYPE[name] !== undefined) return CHANNEL_TYPE[name];
+  var c = chanCanon(name);
+  if (CHANNEL_TYPE[c] !== undefined) return CHANNEL_TYPE[c];
+  var ks = Object.keys(CHANNEL_TYPE);
+  for (var i = 0; i < ks.length; i++) {
+    if (chanCanon(ks[i]) === c) return CHANNEL_TYPE[ks[i]];
+  }
+  return undefined;
+}
+
 // ===== Channel type mapping（提前定义，供 deriveVirtualFields 调用） =====
 // ⚠️ 权威源：~/Downloads/商务-渠道-类型-进量预估.xlsx 的「类型」列（渠道名以看板实际名为准）
 // 2026-09-21 按权威表补全，消除「其他」兜底
@@ -1017,11 +1056,15 @@ const CHANNEL_TYPE_PERIOD_OVERRIDE = {
 // 获取渠道类型，支持按期次覆盖（period 缺省时用当前聚合期次）
 function getChannelType(channel, period) {
   if (!period) period = getCurrentAggPeriod();
-  var ov = CHANNEL_TYPE_PERIOD_OVERRIDE[channel];
-  if (ov && period && PERIOD_ORDER.indexOf(period) >= PERIOD_ORDER.indexOf(ov.fromPeriod)) {
+  var ov = CHANNEL_TYPE_PERIOD_OVERRIDE[channel] || CHANNEL_TYPE_PERIOD_OVERRIDE[chanCanon(channel)];
+  // ⚠️ 铁律 2 同款防御：indexOf 返回 -1（期次不在 PERIOD_ORDER）时不得当作「最前」参与比较，
+  //    否则未知期次会被误判为「已达到 fromPeriod」而错误套用覆盖类型。两侧下标都需有效。
+  var pi = PERIOD_ORDER.indexOf(period), fi = ov ? PERIOD_ORDER.indexOf(ov.fromPeriod) : -1;
+  if (ov && pi !== -1 && fi !== -1 && pi >= fi) {
     return ov.type;
   }
-  return CHANNEL_TYPE[channel] || '其他';
+  var t = chanTypeOf(channel);
+  return t === undefined ? '其他' : t;
 }
 
 // 转化链路：夏6期起为 0-299 链路，之前为 0-153 链路
@@ -5387,6 +5430,21 @@ function renderChannelVolume(records) {
     var el = _el('tableCvRank');
     if (!el) return;
     var rows = rankList.slice();
+    // 2026-10-12 补全：目标表里有目标、但本期无进量的渠道也要成行，
+    // 否则「合计目标」漏算（秋5 曾只算出 4,000，在线表口径为 6,200），完标率被高估。
+    // 去重按规范名比较（避免『卓企』与『潍坊卓企』同时成行导致同一笔目标被计入两次）。
+    (function () {
+      var covered = {};
+      rankList.forEach(function (a) { covered[chanCanon(a.ch)] = 1; });
+      var extra = Object.keys(tgt.map || {}).filter(function (k) {
+        return !covered[chanCanon(k)];
+      }).sort(function (x, y) {
+        return cvChanTarget(tgt.map[y]) - cvChanTarget(tgt.map[x]);
+      }).map(function (k) {
+        return { ch: k, 在班: 0, 转低: 0, byPeriod: {}, tier: {}, noInflow: true };
+      });
+      if (extra.length) { rows = rows.concat(extra); }
+    })();
     var maxCell = Math.max.apply(null, rows.map(function (a) { return chCur(a); }).concat([1]));
     var sum = { 在班: 0, 转低: 0, prev: 0, tgt: 0 };
     var body = rows.map(function (a) {
@@ -5395,7 +5453,7 @@ function renderChannelVolume(records) {
       var d = cvDelta(v, pv);
       var ct = getChannelType(a.ch, cur);
       var bd = getBdByChannel(a.ch, cur);
-      var t = cvChanTarget(tgt.map[a.ch]);
+      var t = cvChanTarget(chanTargetOf(tgt.map, a.ch));
       sum.在班 += v; sum.转低 += chConvCur(a); sum.prev += pv; sum.tgt += t;
       var dColor = d === null ? '#94a3b8' : (d >= 0 ? '#dc2626' : '#16a34a');
       return '<tr>'
@@ -5422,6 +5480,9 @@ function renderChannelVolume(records) {
       + '<table><thead><tr><th>渠道</th><th>渠道类型</th><th>BD</th><th>进量</th><th>占比</th><th>上期进量' + (isLatest ? '<br><span style="font-weight:400;font-size:10.5px;opacity:.85;">(整期，仅量级参考)</span>' : '') + '</th><th>' + cmpLabel + '</th><th>目标</th><th>完标率</th><th>转率</th></tr></thead>'
       + '<tbody>' + body + sumRow + '</tbody></table>'
       + '<div class="cv-note">＊目标列' + (tgt.from ? '取自「' + cvEsc(tgt.from) + '」期次目标' : '源表未配置') + (tgt.from && tgt.from !== cur ? '（' + cvEsc(cur) + ' 无专属目标，沿用最近有目标的期次）' : '')
+      + (rows.some(function (a) { return a.noInflow; })
+        ? '<br>＊含 ' + rows.filter(function (a) { return a.noInflow; }).length + ' 个「本期暂无进量但有目标」的渠道（目标已计入合计，进量记 0）'
+        : '')
       + '<br>＊对比口径' + cvEsc(cmpNote) + '</div>';
   })();
 
@@ -7627,6 +7688,23 @@ function renderFlow(records) {
     if (!bdChannelMap[bd]) bdChannelMap[bd] = [];
     bdChannelMap[bd].push(ch);
   });
+  // 2026-10-12 补全：当期目标表里有目标、但筛选数据中无记录的渠道也要挂到 BD 名下，
+  // 否则 BD 目标分母漏算（秋5 曾漏 盛德维新 200 → 王雨目标只有 1,300）。
+  // 按规范名去重，避免与数据侧同名渠道重复计入。
+  (function () {
+    var tgtAll = getCurrentChannelTargets();
+    var covered = {};
+    Object.keys(bdChannelMap).forEach(function (bd) {
+      bdChannelMap[bd].forEach(function (ch) { covered[chanCanon(ch)] = 1; });
+    });
+    Object.keys(tgtAll).forEach(function (ch) {
+      if (covered[chanCanon(ch)]) return;
+      var bd = getBdByChannel(ch, getCurrentAggPeriod());
+      if (!bd || bd === '其他') return;
+      if (!bdChannelMap[bd]) bdChannelMap[bd] = [];
+      bdChannelMap[bd].push(ch);
+    });
+  })();
   const bdNames = Object.keys(bdChannelMap).filter(bd => bd !== '其他').sort();
 
   // Aggregate actual data by channel (all subjects)
@@ -7646,7 +7724,7 @@ function renderFlow(records) {
     let targetRead = 0;
     var curTargets = getCurrentChannelTargets();
     allChannels.forEach(ch => {
-      const ct = curTargets[ch];
+      const ct = chanTargetOf(curTargets, ch);
       if (ct) {
         targetRead += ct['阅读'] || 0;
       }
@@ -7880,7 +7958,7 @@ function renderFlow(records) {
       const ct = getChannelType(c.channel, getCurrentAggPeriod());
       const bdName = getBdByChannel(c.channel, getCurrentAggPeriod());
       var curTargets2 = getCurrentChannelTargets();
-      const chTarget = curTargets2[c.channel];
+      const chTarget = chanTargetOf(curTargets2, c.channel);
       const hasTarget = chTarget != null;
       const target = hasTarget ? (chTarget[subj] || 0) : null;
       const achieveRate = hasTarget && target > 0 ? safeDiv(c.在班人次, target) : null;
@@ -7927,7 +8005,7 @@ function renderFlow(records) {
     // Total row
     const totalTarget = chList.reduce((s, c) => {
       var curTargets3 = getCurrentChannelTargets();
-      const ct = curTargets3[c.channel];
+      const ct = chanTargetOf(curTargets3, c.channel);
       return s + (ct ? (ct[subj] || 0) : 0);
     }, 0);
     const totalAchieve = totalTarget > 0 ? safeDiv(totalLeads, totalTarget) : null;
