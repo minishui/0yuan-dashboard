@@ -1023,7 +1023,10 @@ function chanTypeOf(name) {
 }
 
 // ===== Channel type mapping（提前定义，供 deriveVirtualFields 调用） =====
-// ⚠️ 权威源：~/Downloads/商务-渠道-类型-进量预估.xlsx 的「类型」列（渠道名以看板实际名为准）
+// ⚠️ 权威源（2026-10-12 起变更）：在线文档《【进校0元】量级&产能&信息汇总表》各期次明细行的「类型」列
+//    → 每日由 scripts/fetch_targets_from_doc.py --check-type / --apply-type 同步（水水指示：类型每天读最新）。
+//    旧源 ~/Downloads/商务-渠道-类型-进量预估.xlsx「类型」列已降级为参考（该表只到秋4目标列，新渠道常无行）。
+//    类型随时间变化时走下方 CHANNEL_TYPE_PERIOD_OVERRIDE（如中碳夏9期起改捐赠进校），历史期次保留原类型。
 // 2026-09-21 按权威表补全，消除「其他」兜底
 const CHANNEL_TYPE = {
   // —— 活动进校 ——
@@ -1047,11 +1050,14 @@ const CHANNEL_TYPE = {
   // —— 进校APP ——
   '掌通': '进校APP',
   // —— 中碳：基础=活动进校，夏9期起由 CHANNEL_TYPE_PERIOD_OVERRIDE 覆盖为捐赠进校 ——
-  '中碳': '活动进校'
+  '中碳': '活动进校',
+  // —— 进校渠道（2026-10-12 依在线文档秋5期明细行补全；占秋5进量约 74%）——
+  '潍坊卓企': '进校渠道'
 };
-// 渠道类型按"渠道+期次"覆盖（如中碳从夏9期起改为捐赠进校）
+// 渠道类型按"渠道+期次"覆盖（值取自在线文档各期次明细行的「类型」列）
 const CHANNEL_TYPE_PERIOD_OVERRIDE = {
-  '中碳': { fromPeriod: '夏9期', type: '捐赠进校' }
+  '中碳': { fromPeriod: '夏9期', type: '捐赠进校' },
+  '千机教育': { fromPeriod: '秋5期', type: '活动进校' }
 };
 // 获取渠道类型，支持按期次覆盖（period 缺省时用当前聚合期次）
 function getChannelType(channel, period) {
@@ -1095,7 +1101,7 @@ function deriveVirtualFields() {
     });
   }
   // 生成筛选选项列表（按固定顺序）
-  var typeOrder = ['活动进校', '捐赠进校', '单校直推', '进校APP', '进校社群', '其他'];
+  var typeOrder = ['活动进校', '捐赠进校', '单校直推', '进校APP', '进校社群', '进校渠道', '其他'];
   DATA.filters['渠道类型'] = typeOrder.filter(function(t) { return typeSet.has(t); });
   var bdOrder = ['徐冲', '杨文丽', '陈天钰', '刘家欢', '储志来', '王雨', '进校活动', '杨国威', '其他'];
   DATA.filters['商务BD'] = bdOrder.filter(function(b) { return bdSet.has(b); });
@@ -8188,7 +8194,7 @@ function renderFullFunnel(records) {
   var dimMap = {
     subject: { key: '学科', label: '学科', order: ['创新思维','阅读','英语'] },
     channel: { key: '渠道', label: '渠道', order: null },
-    channelType: { key: '渠道类型', label: '渠道类型', order: ['活动进校','捐赠进校','进校社群','单校直推','进校APP','其他'] },
+    channelType: { key: '渠道类型', label: '渠道类型', order: ['活动进校','捐赠进校','进校社群','单校直推','进校APP','进校渠道','其他'] },
     hotspot: { key: '热点名称', label: '热点', order: null },
     cityline: { key: '城市等级', label: '城市线', order: ['一线城市','新一线城市','二线城市','三线城市','四线城市','五线城市','六线及以下','未知','其他'] },
     city: { key: '城市', label: '城市', order: null },
