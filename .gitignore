@@ -3,3 +3,6 @@
 !.workbuddy/frozen_innovation.json
 scripts/
 .DS_Store
+
+# 打包分发的安装包目录（不属于看板本体，勿提交）
+dist/
